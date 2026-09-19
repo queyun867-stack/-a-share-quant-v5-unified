@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A股量化研究 V6.6</title>
+<title>A股量化研究 V6.7.1</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
 main{max-width:860px;margin:auto;padding:18px 12px 70px}.card,.note{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin:12px 0}.note{background:#eff6ff;color:#1e40af;line-height:1.6}
@@ -11,7 +11,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 .field select{border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#111827;width:100%;box-sizing:border-box}
 @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body><main>
-<h1>A股量化研究</h1><div class="sub">V6.7 · Regime 2.0 · 赢家持有 · 弱市降仓</div>
+<h1>A股量化研究</h1><div class="sub">V6.7.1 · 自适应弱市降仓候选 · A/B验收</div>
 <div class="tabs card"><button class="tab on" data-p="market">全市场</button><button class="tab" data-p="cand">候选池</button><button class="tab" data-p="focus">重点池</button><button class="tab" data-p="pos">持仓</button></div>
 <div class="card">
   <b>运行模式</b> <span id="modeBadge" class="pill"></span>
@@ -25,12 +25,12 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="modelLock" class="audit"></div>
   <div id="auditStrip" class="scoreStrip"></div>
 </div>
-<div class="note"><b>V6.7执行层升级：Regime 2.0 + 赢家延长持有 + 弱市自动降仓。</b> D-Core本身仍保持45%E+35%F+20%L，不因为近期强势窗口临时调权。Regime 2.0用科技池20日中位趋势、5日趋势和上涨宽度联合判断强/中/弱；连续账户默认强势95%、中性90%、弱势55%目标资金利用率。盈利≥5%且趋势未破坏的旧仓获得更宽保留带，同时增加2交易日换仓冷却；风险破坏时冷却失效。压力测试会在同一历史窗口同时跑V6.6.5基线与V6.7，直接比较中位收益、P25、最差窗口、回撤和主动换手。<br><b>执行纪律仍保留：</b>先按账户权益、100股整手和单股上限生成可执行候选池；持续流出、严重过热、最小1手超限或真实容量不足继续硬拦截。官方盘前样本与研究轨继续隔离。</div>
+<div class="note"><b>V6.7.1先作为“候选执行层”做同窗验收，不直接用最近强势行情决定晋级。</b> D-Core仍保持45%E+35%F+20%L；V6.7已验证有效的2日冷却、赢家延长持有和换仓迟滞全部保留。候选规则把强势/中性目标利用率设为95%/95%，普通弱势先降至78%；只有当“5日中位趋势≤-2%、上涨宽度≤42%、账户距峰值回撤≤-4%”三项中至少两项同时恶化时，才进入确认弱势并降至55%。浮盈≥5%且个股风险未破坏的赢家不因市场标签机械砍仓。<br><b>固定晋级门槛：</b>同样12窗×20交易日下，收益中位≥1%、P25≥-4%、最差窗口≥-13%、盘中回撤中位≥-8.5%、主动换手中位≤3x、跑赢V6.6.5窗口≥50%；只有6/6通过才考虑升为默认执行。实时X-Gate仍保留V6.7稳定口径，避免未验证候选直接影响真实执行。</div>
 
 <section id="market">
 <div class="card">
 <button id="scan" class="blue">扫描全部A股</button><button id="stopScan" disabled>停止扫描</button><button id="deepAll" disabled>深扫全市场Top40</button><button id="deepTech" disabled>深扫科技Top40</button><button id="testK">测试K线源</button><button id="clear">清缓存</button>
-<p id="ms">正在启动V6.7…</p><div class="bar"><i id="mb"></i></div>
+<p id="ms">正在启动V6.7.1…</p><div class="bar"><i id="mb"></i></div>
 </div>
 <div class="grid"><div><b id="n1">0</b><span>全市场</span></div><div><b id="n2">0</b><span>硬过滤后</span></div><div><b id="n3">0/0</b><span>全/科技候选</span></div><div><b id="n4">0</b><span>重点池</span></div></div>
 <div class="card">
@@ -56,7 +56,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div class="metricGrid">
     <div class="field"><label>观察周期</label><select id="labHorizon"><option value="r1">1日</option><option value="r3">3日</option><option value="r5" selected>5日</option><option value="r10">10日</option></select></div>
     <div class="field"><label>执行规则</label><select id="labRule"><option value="D5">D Top5</option><option value="X_PASS">X-PASS</option><option value="X_PC">X PASS+CAUTION</option><option value="P1">P1</option></select></div>
-    <div class="field"><label>样本版本</label><select id="labModel"><option value="all">全部冻结版本（研究）</option><option value="current">仅当前V6.7规则</option></select></div>
+    <div class="field"><label>样本版本</label><select id="labModel"><option value="all">全部冻结版本（研究）</option><option value="current">仅当前V6.7.1构建</option></select></div>
     <div class="field"><label>往返摩擦成本（bp）</label><input id="labCostBps" inputmode="decimal" value="20"></div>
   </div>
   <div class="toolbar"><button id="runReplayLab" class="blue">运行完整回放</button><button id="runReplayRandom">随机稳健性×200</button><button id="pickRandomArchive">随机抽一日回放</button></div>
@@ -81,7 +81,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="histSimBody"></div>
 </div>
 <div class="card">
-  <b>连续账户回放（研究）</b><span class="small">V6.7先做可执行预筛，再用Regime 2.0控制总风险敞口；盈利趋势仓获得更宽保留带，短持仓设换仓冷却，避免强势股刚启动就被机械换掉。跨时期压力测试同时输出V6.6.5基线，便于同窗A/B。</span>
+  <b>连续账户回放（研究）</b><span class="small">V6.7.1候选先做可执行预筛，再执行自适应弱市降仓；普通弱势不会立刻砍到55%，只有三类风险信号至少2项确认才深度降仓。赢家保护与2日冷却继续保留。压力测试同窗输出V6.6.5、V6.7与V6.7.1三版，自动按固定门槛验收。</span>
   <div class="metricGrid">
     <div class="field"><label>起始日期（留空=最近20个交易日）</label><input id="acctStart" type="date"></div>
     <div class="field"><label>结束日期（留空=最新可用日）</label><input id="acctEnd" type="date"></div>
@@ -93,13 +93,15 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
     <div class="field"><label>赢家保护起点（浮盈%）</label><input id="acctWinnerProfit" inputmode="decimal" value="5"></div>
     <div class="field"><label>赢家额外保留名次</label><input id="acctWinnerRankBonus" inputmode="numeric" value="2"></div>
     <div class="field"><label>强势目标利用率（%）</label><input id="acctStrongUtil" inputmode="decimal" value="95"></div>
-    <div class="field"><label>中性目标利用率（%）</label><input id="acctNeutralUtil" inputmode="decimal" value="90"></div>
-    <div class="field"><label>弱势目标利用率（%）</label><input id="acctWeakUtil" inputmode="decimal" value="55"></div>
+    <div class="field"><label>中性目标利用率（%）</label><input id="acctNeutralUtil" inputmode="decimal" value="95"></div>
+    <div class="field"><label>普通弱势目标利用率（%）</label><input id="acctWeakUtil" inputmode="decimal" value="78"></div>
+    <div class="field"><label>确认弱势目标利用率（%）</label><input id="acctConfirmWeakUtil" inputmode="decimal" value="55"></div>
     <div class="field"><label>单股市值上限（%）</label><input id="acctMaxPct" inputmode="decimal" value="35"></div>
     <div class="field"><label>往返摩擦成本（bp）</label><input id="acctCostBps" inputmode="decimal" value="20"></div>
     <div class="field"><label>跨时期窗口长度</label><select id="acctWindowDays"><option value="10">10个交易日</option><option value="20" selected>20个交易日</option><option value="40">40个交易日</option></select></div>
     <div class="field"><label>压力测试窗口数</label><select id="acctWindows"><option value="8">8窗</option><option value="12" selected>12窗</option><option value="20">20窗</option></select></div>
   </div>
+  <div class="small">确认弱势采用固定2/3规则：5日中位趋势≤-2%、上涨宽度≤42%、账户距峰值回撤≤-4%，至少2项同时触发。该阈值在本轮验收前不随结果改动。</div>
   <div class="toolbar"><button id="runAcctReplay" class="blue">运行指定区间账户回放</button><button id="runAcctStress">跨时期压力测试</button></div>
   <div id="acctReplayStatus" class="small">建议先看指定区间，再跑跨时期压力测试。压力测试会把窗口等距铺到全部可用历史，不只选择最近科技强势阶段。</div>
   <div class="bar"><i id="acctReplayBar"></i></div>
@@ -116,7 +118,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
     <div class="field"><label>风险距离/退出参考（%）</label><input id="execStopPct" inputmode="decimal" value="8"></div>
   </div>
   <div class="toolbar"><button id="saveExecCfg" class="blue">保存执行参数</button></div>
-  <div id="execCfgStatus" class="small">默认进取档：8万元本金、单只上限35%、单笔计划损失2.00%、风险距离8%。V6.7在原有权益/容量约束上加入Regime 2.0：弱势环境的新开仓自动降级并缩小首仓；这里仍只影响研究工具的执行建议。</div>
+  <div id="execCfgStatus" class="small">默认进取档：8万元本金、单只上限35%、单笔计划损失2.00%、风险距离8%。V6.7.1构建中的实时X-Gate暂沿用V6.7稳定Regime 2.0口径；自适应弱市规则先在连续账户/压力测试中做同窗验收，通过固定6项门槛后再考虑晋级。</div>
 </div>
 <div class="card">
   <b>Top40 深度候选</b><span id="channelStatus" class="small">当前：科技独立榜</span><div id="replayNotice" class="small"></div>
@@ -263,12 +265,12 @@ setTimeout(function(){
 }, 1800);
 </script>
 <script>
-const MODEL_VERSION='6.7';
-const APP_BUILD='6.7.0';
+const MODEL_VERSION='6.7.1';
+const APP_BUILD='6.7.1';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION}`;
-const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v5-regime2 | HoldingState=v3-winner-hold | Regime2=median20+median5+breadth | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
-const MODEL_RULE_ID='2026-09-19-v6.7-regime2-winnerhold1';
+const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v5-regime2-stable | HoldingState=v3-winner-hold | AccountCandidate=v671-adaptiveweak-2of3 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
+const MODEL_RULE_ID='2026-09-19-v6.7.1-adaptiveweak-ab1';
 
 const $=x=>document.getElementById(x),mean=a=>{a=a.filter(Number.isFinite);return a.length?a.reduce((s,x)=>s+x,0)/a.length:NaN},ret=(a,n)=>a.length>n?a.at(-1)/a.at(-1-n)-1:NaN,fmt=(x,d=0)=>Number.isFinite(x)?x.toFixed(d):'—',money=x=>Number.isFinite(x)?(x>0?'+':'')+(x/1e8).toFixed(1)+'亿':'—';
 const seed=[['300308','中际旭创',92],['300502','新易盛',90],['300394','天孚通信',88],['002281','光迅科技',76],['688041','海光信息',90],['002463','沪电股份',87],['002371','北方华创',87],['688012','中微公司',86],['688120','华海清科',81],['688072','拓荆科技',83],['300124','汇川技术',79],['688017','绿的谐波',76]].map(x=>({code:x[0],name:x[1],Q:x[2]}));
@@ -736,7 +738,7 @@ function renderReplayLab(randomResult=null){
  const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
  if(!events.length){
    $('replayLabSummary').innerHTML='';
-   $('replayLabBody').innerHTML='<div class="audit"><b>暂无可用成熟样本</b><div class="small">先在“真实盘前精度校准”点击更新结算。若选择“仅当前V6.7规则”，需要未来积累真实官方盘前快照后才会出现样本。</div></div>';
+   $('replayLabBody').innerHTML='<div class="audit"><b>暂无可用成熟样本</b><div class="small">先在“真实盘前精度校准”点击更新结算。若选择“仅当前V6.7.1构建”，需要未来积累真实官方盘前快照后才会出现样本。</div></div>';
    $('replayLabStatus').textContent='当前组合没有可回放的成熟冻结样本。';return
  }
  $('replayLabSummary').innerHTML=
@@ -880,7 +882,7 @@ async function runHistoricalSimulation(){
 
 function acctReplayConfig(){
  const pct01=(id,def)=>Math.max(.1,Math.min(1,+($(id)?.value||def)/100));
- return{capital:Math.max(10000,+($('acctCapital')?.value||80000)),topN:+($('acctTopN')?.value||5),holdRank:Math.max(3,+($('acctHoldRank')?.value||7)),swapGap:Math.max(0,+($('acctSwapGap')?.value||5)),cooldown:Math.max(0,Math.min(10,+($('acctCooldown')?.value||2))),winnerProfit:Math.max(0,Math.min(.50,+($('acctWinnerProfit')?.value||5)/100)),winnerRankBonus:Math.max(0,Math.min(10,+($('acctWinnerRankBonus')?.value||2))),strongUtil:pct01('acctStrongUtil',95),neutralUtil:pct01('acctNeutralUtil',90),weakUtil:pct01('acctWeakUtil',55),maxPct:Math.max(.1,Math.min(1,+($('acctMaxPct')?.value||35)/100)),costBps:Math.max(0,Math.min(200,+($('acctCostBps')?.value||20))),start:$('acctStart')?.value||'',end:$('acctEnd')?.value||'',windowDays:+($('acctWindowDays')?.value||20),windows:+($('acctWindows')?.value||12),policy:'v67'}
+ return{capital:Math.max(10000,+($('acctCapital')?.value||80000)),topN:+($('acctTopN')?.value||5),holdRank:Math.max(3,+($('acctHoldRank')?.value||7)),swapGap:Math.max(0,+($('acctSwapGap')?.value||5)),cooldown:Math.max(0,Math.min(10,+($('acctCooldown')?.value||2))),winnerProfit:Math.max(0,Math.min(.50,+($('acctWinnerProfit')?.value||5)/100)),winnerRankBonus:Math.max(0,Math.min(10,+($('acctWinnerRankBonus')?.value||2))),strongUtil:pct01('acctStrongUtil',95),neutralUtil:pct01('acctNeutralUtil',95),weakUtil:pct01('acctWeakUtil',78),confirmWeakUtil:pct01('acctConfirmWeakUtil',55),maxPct:Math.max(.1,Math.min(1,+($('acctMaxPct')?.value||35)/100)),costBps:Math.max(0,Math.min(200,+($('acctCostBps')?.value||20))),start:$('acctStart')?.value||'',end:$('acctEnd')?.value||'',windowDays:+($('acctWindowDays')?.value||20),windows:+($('acctWindows')?.value||12),policy:'v671'}
 }
 async function loadAcctResearchData(progress){
  const stocks=seed.map(x=>({code:x.code,name:x.name,Q:x.Q})),data=[];
@@ -892,9 +894,16 @@ function accountDateRange(eligible,cfg){let a=eligible;if(cfg.start)a=a.filter(d
 function openEquity(state,cs){let eq=state.cash;for(const [code,h] of state.holdings){const px=cs.prices.get(code)?.open;if(Number.isFinite(px))eq+=h.shares*px}return eq}
 function closeEquity(state,cs){let eq=state.cash;for(const [code,h] of state.holdings){const px=cs.prices.get(code)?.close;if(Number.isFinite(px))eq+=h.shares*px}return eq}
 function accountMaxDrawdown(curve){let peak=-Infinity,mdd=0;for(const x of curve){if(x.equity>peak)peak=x.equity;if(peak>0)mdd=Math.min(mdd,x.equity/peak-1)}return mdd}
-function regimeTargetUtil(cs,cfg,policy='v67'){
- if(policy==='v665')return 1;
- return cs.regime==='强势'?cfg.strongUtil:cs.regime==='弱势'?cfg.weakUtil:cfg.neutralUtil
+function regimeDecision(cs,cfg,policy='v671',accountDD=0){
+ if(policy==='v665')return{util:1,label:'基线满仓',confirmed:false,badCount:0,shortBad:false,breadthBad:false,drawdownBad:false};
+ if(policy==='v67')return{util:cs.regime==='强势'?.95:cs.regime==='弱势'?.55:.90,label:cs.regime,confirmed:cs.regime==='弱势',badCount:cs.regime==='弱势'?2:0,shortBad:false,breadthBad:false,drawdownBad:false};
+ if(cs.regime==='强势')return{util:cfg.strongUtil,label:'强势',confirmed:false,badCount:0,shortBad:false,breadthBad:false,drawdownBad:false};
+ if(cs.regime==='中性')return{util:cfg.neutralUtil,label:'中性',confirmed:false,badCount:0,shortBad:false,breadthBad:false,drawdownBad:false};
+ const shortBad=Number.isFinite(cs.median5)&&cs.median5<=-.02;
+ const breadthBad=Number.isFinite(cs.breadth20)&&cs.breadth20<=.42;
+ const drawdownBad=Number.isFinite(accountDD)&&accountDD<=-.04;
+ const badCount=[shortBad,breadthBad,drawdownBad].filter(Boolean).length,confirmed=badCount>=2;
+ return{util:confirmed?cfg.confirmWeakUtil:cfg.weakUtil,label:confirmed?'确认弱势':'普通弱势',confirmed,badCount,shortBad,breadthBad,drawdownBad}
 }
 function historicalRiskBroken(r){
  if(!r)return true;
@@ -907,7 +916,7 @@ function simulateAccountWindow(data,dates,cfg,detail=true){
  let tradeGross=0,tradeCount=0,activeTradeGross=0,activeTradeCount=0,peakSingleWeight=0,intradayMdd=0,peakMarkedEquity=cfg.capital,initialBuildDone=false;
  for(const d of dates){
    const cs=historicalCrossSection(data,d);if(cs.scored.length<6||cs.prices.size<6)continue;
-   const preEq=openEquity(state,cs),maxValue=Math.max(0,preEq*cfg.maxPct),initialBuildDay=!initialBuildDone,targetUtil=regimeTargetUtil(cs,cfg,policy),targetExposure=preEq*targetUtil;
+   const preEq=openEquity(state,cs),maxValue=Math.max(0,preEq*cfg.maxPct),initialBuildDay=!initialBuildDone,accountDD=peakMarkedEquity>0?preEq/peakMarkedEquity-1:0,rgDecision=regimeDecision(cs,cfg,policy,accountDD),targetUtil=rgDecision.util,targetExposure=preEq*targetUtil;
    const execRanked=[];
    for(const r of cs.scored){
      const px=cs.prices.get(r.code)?.open,isHeld=state.holdings.has(r.code),lot=Number.isFinite(px)?px*100:NaN;
@@ -923,19 +932,19 @@ function simulateAccountWindow(data,dates,cfg,detail=true){
      const rk=rankMap.get(code)??999,sc=scoreMap.get(code)??-999,px=cs.prices.get(code)?.open,r=rowMap.get(code)||cs.scored.find(x=>x.code===code),broken=historicalRiskBroken(r);
      const pnl=Number.isFinite(px)&&h.entry>0?px/h.entry-1:0,daysHeld=h.daysHeld||0;
      const baseKeep=(rk<=cfg.topN)||(rk<=cfg.holdRank&&cutoff-sc<cfg.swapGap);
-     const winner=policy==='v67'&&pnl>=cfg.winnerProfit&&!broken&&rk<=cfg.holdRank+cfg.winnerRankBonus&&cutoff-sc<cfg.swapGap+4;
-     const cooldownKeep=policy==='v67'&&daysHeld<cfg.cooldown&&!broken;
+     const winner=policy!=='v665'&&pnl>=cfg.winnerProfit&&!broken&&rk<=cfg.holdRank+cfg.winnerRankBonus&&cutoff-sc<cfg.swapGap+4;
+     const cooldownKeep=policy!=='v665'&&daysHeld<cfg.cooldown&&!broken;
      const keep=baseKeep||winner||cooldownKeep;
      if(!keep&&Number.isFinite(px)){
        const gross=h.shares*px;state.cash+=gross*(1-side);addTrade(gross);state.holdings.delete(code);dayActs.push(`卖${code} ${h.shares}股${broken?'（风险破坏）':winner?'（赢家失效）':''}`)
      }
    }
    // Regime 2.0：弱势/中性阶段主动把总风险敞口压到目标利用率，优先减最弱的非赢家。
-   if(policy==='v67'){
+   if(policy!=='v665'){
      let exposure=0;for(const [code,h] of state.holdings){const px=cs.prices.get(code)?.open;if(Number.isFinite(px))exposure+=h.shares*px}
      if(exposure>targetExposure+1){
        const held=[...state.holdings.entries()].map(([code,h])=>{const px=cs.prices.get(code)?.open,rk=rankMap.get(code)??999,r=rowMap.get(code),pnl=Number.isFinite(px)&&h.entry>0?px/h.entry-1:0;return{code,h,px,rk,r,pnl,winner:pnl>=cfg.winnerProfit&&!historicalRiskBroken(r)}}).filter(x=>Number.isFinite(x.px)).sort((a,b)=>(a.winner-b.winner)||(b.rk-a.rk));
-       for(const x of held){if(exposure<=targetExposure+1)break;const gross=x.h.shares*x.px;state.cash+=gross*(1-side);addTrade(gross);state.holdings.delete(x.code);exposure-=gross;dayActs.push(`降仓卖${x.code} ${x.h.shares}股（${cs.regime}${Math.round(targetUtil*100)}%）`)}
+       for(const x of held){if(exposure<=targetExposure+1)break;if(policy==='v671'&&x.winner)continue;const gross=x.h.shares*x.px;state.cash+=gross*(1-side);addTrade(gross);state.holdings.delete(x.code);exposure-=gross;dayActs.push(`降仓卖${x.code} ${x.h.shares}股（${rgDecision.label}${Math.round(targetUtil*100)}%）`)}
      }
    }
    let eq=openEquity(state,cs),slots=Math.max(0,cfg.topN-state.holdings.size);
@@ -959,14 +968,14 @@ function simulateAccountWindow(data,dates,cfg,detail=true){
    eq=closeEquity(state,cs);const prev=curve.length?curve.at(-1).equity:cfg.capital,dayRet=prev>0?eq/prev-1:0,holdValue=eq-state.cash;
    let dayMaxWeight=0;if(eq>0){for(const [code,h] of state.holdings){const px=cs.prices.get(code)?.close;if(Number.isFinite(px))dayMaxWeight=Math.max(dayMaxWeight,h.shares*px/eq)}}
    peakSingleWeight=Math.max(peakSingleWeight,dayMaxWeight);peakMarkedEquity=Math.max(peakMarkedEquity,eq);
-   invested.push(eq>0?holdValue/eq:0);curve.push({date:d,equity:eq,dayRet,cash:state.cash,n:state.holdings.size,regime:cs.regime,regimeScore:cs.regimeScore,targetUtil,trend:cs.trend,holds:[...state.holdings.keys()],maxWeight:dayMaxWeight,intradayFloor,intradayDD:peakMarkedEquity>0?intradayFloor/peakMarkedEquity-1:0,execCount:execRanked.length});
-   if(detail)actions.push({date:d,acts:dayActs.length?dayActs.join('；'):'不换仓',equity:eq,dayRet,cash:state.cash,regime:cs.regime,regimeScore:cs.regimeScore,targetUtil,holds:[...state.holdings.keys()],maxWeight:dayMaxWeight,execCount:execRanked.length})
+   invested.push(eq>0?holdValue/eq:0);curve.push({date:d,equity:eq,dayRet,cash:state.cash,n:state.holdings.size,regime:cs.regime,policyRegime:rgDecision.label,weakConfirmed:rgDecision.confirmed,weakBadCount:rgDecision.badCount,accountDD,targetUtil,regimeScore:cs.regimeScore,trend:cs.trend,holds:[...state.holdings.keys()],maxWeight:dayMaxWeight,intradayFloor,intradayDD:peakMarkedEquity>0?intradayFloor/peakMarkedEquity-1:0,execCount:execRanked.length});
+   if(detail)actions.push({date:d,acts:dayActs.length?dayActs.join('；'):'不换仓',equity:eq,dayRet,cash:state.cash,regime:cs.regime,policyRegime:rgDecision.label,weakConfirmed:rgDecision.confirmed,weakBadCount:rgDecision.badCount,accountDD,regimeScore:cs.regimeScore,targetUtil,holds:[...state.holdings.keys()],maxWeight:dayMaxWeight,execCount:execRanked.length})
  }
  if(!curve.length)return null;
  const lastD=curve.at(-1).date,lastCS=historicalCrossSection(data,lastD);let finalCash=state.cash,liquidationGross=0;
  for(const [code,h] of state.holdings){const px=lastCS.prices.get(code)?.close;if(Number.isFinite(px)){const gross=h.shares*px;finalCash+=gross*(1-side);tradeGross+=gross;liquidationGross+=gross;tradeCount++}}
  const ret=finalCash/cfg.capital-1,mdd=accountMaxDrawdown(curve),turnover=cfg.capital>0?tradeGross/cfg.capital:NaN,activeTurnover=cfg.capital>0?activeTradeGross/cfg.capital:NaN;
- return{policy,ret,finalCash,mdd,intradayMdd,tradeCount,activeTradeCount,turnover,activeTurnover,liquidationGross,curve,actions,blocked,capacityFiltered,avgInvest:mean(invested),peakSingleWeight,start:curve[0].date,end:curve.at(-1).date,startRegime:curve[0].regime,endRegime:curve.at(-1).regime}
+ return{policy,ret,finalCash,mdd,intradayMdd,tradeCount,activeTradeCount,turnover,activeTurnover,liquidationGross,curve,actions,blocked,capacityFiltered,avgInvest:mean(invested),peakSingleWeight,start:curve[0].date,end:curve.at(-1).date,startRegime:curve[0].regime,startPolicyRegime:curve[0].policyRegime,endRegime:curve.at(-1).regime,endPolicyRegime:curve.at(-1).policyRegime}
 }
 function acctSummaryBoxes(r,cfg){
  const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
@@ -981,32 +990,43 @@ function moneyY(x){return Number.isFinite(x)?Math.round(x).toLocaleString()+'元
 async function runAccountReplay(){
  const btn=$('runAcctReplay');if(!btn)return;btn.disabled=true;$('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='正在读取历史数据并构造连续账户…';
  try{const cfg=acctReplayConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('acctReplayBar').style.width=Math.round(i/n*30)+'%';$('acctReplayStatus').textContent=`历史数据 ${i}/${n}：成功${ok}只`}),eligible=eligibleAccountDates(data),dates=accountDateRange(eligible,cfg);if(dates.length<2)throw Error('指定区间可用交易日不足2日');
-   const r=simulateAccountWindow(data,dates,{...cfg,policy:'v67'},true),base=simulateAccountWindow(data,dates,{...cfg,policy:'v665'},false);if(!r)throw Error('账户回放未形成有效交易日');$('acctReplayBar').style.width='100%';$('acctReplaySummary').innerHTML=acctSummaryBoxes(r,cfg)+(base?`<div class="scoreBox"><b>${pct(r.ret-base.ret)}</b><span>相对V6.6.5收益差</span><div class="micro">基线 ${pct(base.ret)} · V6.7 ${pct(r.ret)}</div></div>`:'');
-   const rows=r.actions.slice(-40).reverse().map(x=>`<tr><td>${x.date}</td><td>${x.regime} ${x.regimeScore}</td><td>${pct(x.targetUtil,0)}</td><td>${x.acts}</td><td>${pct(x.dayRet)}</td><td>${moneyY(x.equity)}</td><td>${Math.round(x.cash).toLocaleString()}</td><td>${pct(x.maxWeight,0)}</td><td>${x.execCount}</td><td>${x.holds.join(',')}</td></tr>`).join('');
+   const r=simulateAccountWindow(data,dates,{...cfg,policy:'v671'},true),stable=simulateAccountWindow(data,dates,{...cfg,policy:'v67'},false),base=simulateAccountWindow(data,dates,{...cfg,policy:'v665'},false);if(!r)throw Error('账户回放未形成有效交易日');$('acctReplayBar').style.width='100%';$('acctReplaySummary').innerHTML=acctSummaryBoxes(r,cfg)+(stable?`<div class="scoreBox"><b>${pct(r.ret-stable.ret)}</b><span>相对V6.7收益差</span><div class="micro">V6.7 ${pct(stable.ret)} · V6.7.1 ${pct(r.ret)}</div></div>`:'')+(base?`<div class="scoreBox"><b>${pct(r.ret-base.ret)}</b><span>相对V6.6.5收益差</span><div class="micro">基线 ${pct(base.ret)} · 候选 ${pct(r.ret)}</div></div>`:'');
+   const rows=r.actions.slice(-40).reverse().map(x=>`<tr><td>${x.date}</td><td>${x.policyRegime} ${x.weakBadCount?`(${x.weakBadCount}/3)`:''}</td><td>${pct(x.targetUtil,0)}</td><td>${x.acts}</td><td>${pct(x.dayRet)}</td><td>${moneyY(x.equity)}</td><td>${Math.round(x.cash).toLocaleString()}</td><td>${pct(x.maxWeight,0)}</td><td>${x.execCount}</td><td>${x.holds.join(',')}</td></tr>`).join('');
    const blocks=r.blocked.slice(-10).map(x=>`<div class="small">${x.date} · ${x.code} · ${x.reason} · 1手约${Math.round(x.lot).toLocaleString()}元</div>`).join('');
    const filters=r.capacityFiltered.slice(-10).map(x=>`<div class="small">${x.date} · ${x.code} · ${x.reason} · 1手约${Math.round(x.lot).toLocaleString()}元</div>`).join('');
-   $('acctReplayBody').innerHTML=`<div class="audit"><b>连续账户研究口径 · V6.7 Regime 2.0</b><div class="small">每日开盘前只用历史可见数据评分；Regime 2.0以20日中位趋势、5日趋势和上涨宽度联合分类，强/中/弱默认目标利用率${Math.round(cfg.strongUtil*100)}%/${Math.round(cfg.neutralUtil*100)}%/${Math.round(cfg.weakUtil*100)}%。浮盈≥${Math.round(cfg.winnerProfit*100)}%且趋势未破坏的旧仓获得额外${cfg.winnerRankBonus}名保留空间，新仓冷却${cfg.cooldown}个交易日；风险破坏可立即退出。仍未模拟涨跌停无法成交、滑点与真实盘口容量，因此是研究结果。</div></div><div class="sectionTitle">逐日操作</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>日期</th><th>Regime2</th><th>目标利用率</th><th>开盘动作</th><th>当日</th><th>收盘资产</th><th>现金</th><th>单股峰值</th><th>可执行池</th><th>持仓</th></tr></thead><tbody>${rows}</tbody></table></div>${filters?`<div class="sectionTitle">最近容量预筛排除</div>${filters}`:''}${blocks?`<div class="sectionTitle">最近实际买入拦截</div>${blocks}`:''}`;
+   $('acctReplayBody').innerHTML=`<div class="audit"><b>连续账户研究口径 · V6.7.1自适应弱市候选</b><div class="small">每日开盘前只用历史可见数据评分。强/中/普通弱势/确认弱势目标利用率为${Math.round(cfg.strongUtil*100)}%/${Math.round(cfg.neutralUtil*100)}%/${Math.round(cfg.weakUtil*100)}%/${Math.round(cfg.confirmWeakUtil*100)}%；确认弱势固定采用5日趋势、上涨宽度、账户回撤三项至少2项恶化。浮盈≥${Math.round(cfg.winnerProfit*100)}%且个股风险未破坏的赢家免于纯市场标签机械降仓；新仓冷却${cfg.cooldown}个交易日。仍未模拟涨跌停无法成交、滑点与真实盘口容量，因此是研究结果。</div></div><div class="sectionTitle">逐日操作</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>日期</th><th>自适应阶段</th><th>目标利用率</th><th>开盘动作</th><th>当日</th><th>收盘资产</th><th>现金</th><th>单股峰值</th><th>可执行池</th><th>持仓</th></tr></thead><tbody>${rows}</tbody></table></div>${filters?`<div class="sectionTitle">最近容量预筛排除</div>${filters}`:''}${blocks?`<div class="sectionTitle">最近实际买入拦截</div>${blocks}`:''}`;
    $('acctReplayStatus').textContent=`完成：${r.start} 至 ${r.end}，${r.curve.length}个交易日。这里是连续账户结果，不再把每日Top5事件收益直接复利。`
  }catch(e){$('acctReplayStatus').textContent='账户回放失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false}
 }
 function quantile(a,p){const b=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!b.length)return NaN;const i=(b.length-1)*p,l=Math.floor(i),h=Math.ceil(i);return l===h?b[l]:b[l]+(b[h]-b[l])*(i-l)}
 async function runAccountStress(){
- const btn=$('runAcctStress');if(!btn)return;btn.disabled=true;$('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='正在同窗运行V6.6.5基线与V6.7 Regime 2.0…';
+ const btn=$('runAcctStress');if(!btn)return;btn.disabled=true;$('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='正在同窗运行V6.6.5、V6.7与V6.7.1自适应候选…';
  try{const cfg=acctReplayConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('acctReplayBar').style.width=Math.round(i/n*20)+'%'}),eligible=eligibleAccountDates(data),L=Math.max(5,cfg.windowDays),maxStart=Math.max(0,eligible.length-L),W=Math.min(cfg.windows,maxStart+1),starts=[];if(W<=0)throw Error('历史长度不足压力测试');for(let i=0;i<W;i++)starts.push(Math.round(i*maxStart/Math.max(1,W-1)));
-   const pairs=[];for(let i=0;i<starts.length;i++){const ds=eligible.slice(starts[i],starts[i]+L),base=simulateAccountWindow(data,ds,{...cfg,policy:'v665'},false),v67=simulateAccountWindow(data,ds,{...cfg,policy:'v67'},false);if(base&&v67)pairs.push({base,v67});$('acctReplayBar').style.width=(20+Math.round((i+1)/starts.length*80))+'%';await new Promise(x=>setTimeout(x,10))}if(!pairs.length)throw Error('没有形成有效压力窗口');
-   const vr=pairs.map(x=>x.v67.ret),br=pairs.map(x=>x.base.ret),vdd=pairs.map(x=>x.v67.intradayMdd),bdd=pairs.map(x=>x.base.intradayMdd),vt=pairs.map(x=>x.v67.activeTurnover),bt=pairs.map(x=>x.base.activeTurnover);
-   const worst=[...pairs].sort((a,b)=>a.v67.ret-b.v67.ret)[0],best=[...pairs].sort((a,b)=>b.v67.ret-a.v67.ret)[0],beat=pairs.filter(x=>x.v67.ret>x.base.ret).length/pairs.length,pos=vr.filter(x=>x>0).length/vr.length;
+   const pairs=[];for(let i=0;i<starts.length;i++){const ds=eligible.slice(starts[i],starts[i]+L),base=simulateAccountWindow(data,ds,{...cfg,policy:'v665'},false),stable=simulateAccountWindow(data,ds,{...cfg,policy:'v67'},false),v671=simulateAccountWindow(data,ds,{...cfg,policy:'v671'},false);if(base&&stable&&v671)pairs.push({base,stable,v671});$('acctReplayBar').style.width=(20+Math.round((i+1)/starts.length*80))+'%';await new Promise(x=>setTimeout(x,10))}if(!pairs.length)throw Error('没有形成有效压力窗口');
+   const rr=pairs.map(x=>x.v671.ret),sr=pairs.map(x=>x.stable.ret),br=pairs.map(x=>x.base.ret),rdd=pairs.map(x=>x.v671.intradayMdd),sdd=pairs.map(x=>x.stable.intradayMdd),bdd=pairs.map(x=>x.base.intradayMdd),rt=pairs.map(x=>x.v671.activeTurnover),st=pairs.map(x=>x.stable.activeTurnover),bt=pairs.map(x=>x.base.activeTurnover);
+   const worst=[...pairs].sort((a,b)=>a.v671.ret-b.v671.ret)[0],best=[...pairs].sort((a,b)=>b.v671.ret-a.v671.ret)[0],beatBase=pairs.filter(x=>x.v671.ret>x.base.ret).length/pairs.length,beatStable=pairs.filter(x=>x.v671.ret>x.stable.ret).length/pairs.length,pos=rr.filter(x=>x>0).length/rr.length;
+   const med=quantile(rr,.5),p25=quantile(rr,.25),worstRet=worst.v671.ret,ddMed=quantile(rdd,.5),turnMed=quantile(rt,.5);
+   const gates=[
+     {ok:med>=.01,label:'收益中位≥1%',v:pct(med)},
+     {ok:p25>=-.04,label:'P25≥-4%',v:pct(p25)},
+     {ok:worstRet>=-.13,label:'最差≥-13%',v:pct(worstRet)},
+     {ok:ddMed>=-.085,label:'盘中DD中位≥-8.5%',v:pct(ddMed)},
+     {ok:turnMed<=3,label:'主动换手≤3x',v:turnMed.toFixed(2)+'x'},
+     {ok:beatBase>=.50,label:'跑赢基线≥50%',v:pct(beatBase,0)}
+   ],passN=gates.filter(x=>x.ok).length;
    const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
    $('acctReplaySummary').innerHTML=
-     box(pct(quantile(vr,.5)),'V6.7收益中位',`基线 ${pct(quantile(br,.5))} · 差 ${pct(quantile(vr,.5)-quantile(br,.5))}`)+
-     box(pct(quantile(vr,.25)),'V6.7 P25',`基线 ${pct(quantile(br,.25))}`)+
-     box(pct(worst.v67.ret),'V6.7最差窗口',`基线同窗 ${pct(worst.base.ret)}`)+
-     box(pct(quantile(vdd,.5)),'盘中回撤中位',`基线 ${pct(quantile(bdd,.5))}`)+
-     box((quantile(vt,.5)).toFixed(2)+'x','主动换手中位',`基线 ${(quantile(bt,.5)).toFixed(2)}x`)+
-     box(pct(beat,0),'跑赢V6.6.5窗口',`盈利窗口 ${pct(pos,0)} · ${pairs.length}窗`);
-   const rows=pairs.map(({base,v67})=>`<tr><td>${v67.start}</td><td>${v67.end}</td><td>${v67.startRegime}</td><td>${pct(base.ret)}</td><td>${pct(v67.ret)}</td><td>${pct(v67.ret-base.ret)}</td><td>${pct(v67.intradayMdd)}</td><td>${Number.isFinite(v67.activeTurnover)?v67.activeTurnover.toFixed(2)+'x':'—'}</td><td>${pct(v67.avgInvest,0)}</td></tr>`).join('');
-   const regs=['强势','中性','弱势'].map(g=>{const a=pairs.filter(x=>x.v67.startRegime===g),rr=a.map(x=>x.v67.ret),bb=a.map(x=>x.base.ret);return `<span class="risk ${quantile(rr,.5)>=quantile(bb,.5)?'green':'red'}">${g}${a.length}窗 · V6.7 ${pct(quantile(rr,.5))} / 基线 ${pct(quantile(bb,.5))}</span>`}).join('');
-   $('acctReplayBody').innerHTML=`<div class="audit"><b>同窗A/B压力测试 · V6.7 vs V6.6.5</b><div class="small">同一批${pairs.length}个、每窗${L}交易日的等距历史窗口，同时从${Math.round(cfg.capital).toLocaleString()}元重新开始。V6.6.5保持原来的满额执行与保留逻辑；V6.7加入Regime 2.0目标利用率、赢家保留和${cfg.cooldown}日冷却。优先看P25、最差窗口、回撤和换手是否改善，而不是只看最高收益。</div><div class="riskbar">${regs}</div></div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>开始</th><th>结束</th><th>Regime2</th><th>V6.6.5</th><th>V6.7</th><th>差值</th><th>V6.7盘中DD*</th><th>V6.7换手</th><th>利用率</th></tr></thead><tbody>${rows}</tbody></table></div><div class="small">*盘中DD为同日low同时计入的保守压力估算。V6.7最好窗口 ${best.v67.start}→${best.v67.end}：${pct(best.v67.ret)}。这仍是固定12只科技股研究轨，存在幸存者/选池偏差，不能替代未来官方冻结样本。</div>`;$('acctReplayStatus').textContent=`完成：${pairs.length}个同窗A/B压力窗口；每窗${L}个交易日。`;$('acctReplayBar').style.width='100%'
+     box(pct(med),'V6.7.1收益中位',`V6.7 ${pct(quantile(sr,.5))} · 基线 ${pct(quantile(br,.5))}`)+
+     box(pct(p25),'V6.7.1 P25',`V6.7 ${pct(quantile(sr,.25))} · 基线 ${pct(quantile(br,.25))}`)+
+     box(pct(worstRet),'V6.7.1最差窗口',`V6.7同窗 ${pct(worst.stable.ret)} · 基线 ${pct(worst.base.ret)}`)+
+     box(pct(ddMed),'盘中回撤中位',`V6.7 ${pct(quantile(sdd,.5))} · 基线 ${pct(quantile(bdd,.5))}`)+
+     box(turnMed.toFixed(2)+'x','主动换手中位',`V6.7 ${quantile(st,.5).toFixed(2)}x · 基线 ${quantile(bt,.5).toFixed(2)}x`)+
+     box(`${passN}/6`,'固定晋级门槛',`跑赢基线 ${pct(beatBase,0)} · 跑赢V6.7 ${pct(beatStable,0)} · 盈利窗 ${pct(pos,0)}`);
+   const gateHtml=gates.map(g=>`<span class="risk ${g.ok?'green':'red'}">${g.ok?'PASS':'FAIL'} · ${g.label}：${g.v}</span>`).join('');
+   const rows=pairs.map(({base,stable,v671})=>`<tr><td>${v671.start}</td><td>${v671.end}</td><td>${v671.startPolicyRegime||v671.startRegime}</td><td>${pct(base.ret)}</td><td>${pct(stable.ret)}</td><td>${pct(v671.ret)}</td><td>${pct(v671.ret-base.ret)}</td><td>${pct(v671.ret-stable.ret)}</td><td>${pct(v671.intradayMdd)}</td><td>${Number.isFinite(v671.activeTurnover)?v671.activeTurnover.toFixed(2)+'x':'—'}</td><td>${pct(v671.avgInvest,0)}</td></tr>`).join('');
+   const regs=['强势','中性','弱势'].map(g=>{const a=pairs.filter(x=>x.v671.startRegime===g),rrg=a.map(x=>x.v671.ret),ss=a.map(x=>x.stable.ret),bb=a.map(x=>x.base.ret);return a.length?`<span class="risk ${quantile(rrg,.5)>=quantile(bb,.5)?'green':'red'}">${g}${a.length}窗 · V6.7.1 ${pct(quantile(rrg,.5))} / V6.7 ${pct(quantile(ss,.5))} / 基线 ${pct(quantile(bb,.5))}</span>`:`<span class="risk">${g}0窗</span>`}).join('');
+   $('acctReplayBody').innerHTML=`<div class="audit"><b>固定晋级门槛 · ${passN===6?'6/6 PASS，可进入下一步晋级复核':`${passN}/6，通过不足则继续保持V6.7稳定执行`}</b><div class="riskbar">${gateHtml}</div><div class="small">门槛在本轮测试前已固定，不因结果临时改变。即使6/6通过，也仍需未来官方盘前冻结样本验证；研究轨存在固定12只科技股的幸存者/选池偏差。</div></div><div class="audit"><b>同窗三版压力测试 · V6.7.1 vs V6.7 vs V6.6.5</b><div class="small">同一批${pairs.length}个、每窗${L}交易日的等距历史窗口，同时从${Math.round(cfg.capital).toLocaleString()}元重新开始。V6.7.1只改变弱市仓位确认：普通弱势${Math.round(cfg.weakUtil*100)}%，2/3风险确认后${Math.round(cfg.confirmWeakUtil*100)}%；赢家不因市场标签机械降仓。实时X-Gate仍保持V6.7稳定规则。</div><div class="riskbar">${regs}</div></div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>开始</th><th>结束</th><th>起始阶段</th><th>V6.6.5</th><th>V6.7</th><th>V6.7.1</th><th>vs基线</th><th>vsV6.7</th><th>盘中DD*</th><th>换手</th><th>利用率</th></tr></thead><tbody>${rows}</tbody></table></div><div class="small">*盘中DD为同日low同时计入的保守压力估算。V6.7.1最好窗口 ${best.v671.start}→${best.v671.end}：${pct(best.v671.ret)}。研究结果不等于未来真实收益。</div>`;
+   $('acctReplayStatus').textContent=`完成：${pairs.length}个同窗三版压力窗口；每窗${L}个交易日；固定晋级门槛 ${passN}/6。`;$('acctReplayBar').style.width='100%'
  }catch(e){$('acctReplayStatus').textContent='压力测试失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false}
 }
 function versionGuardInfo(){
