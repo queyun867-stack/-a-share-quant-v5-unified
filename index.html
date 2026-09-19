@@ -258,7 +258,7 @@ setTimeout(function(){
 </script>
 <script>
 const MODEL_VERSION='6.6';
-const APP_BUILD='6.6.4';
+const APP_BUILD='6.6.4.1';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION}`;
 const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v4-equity-aware-aggressive | HoldingState=v2 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
@@ -883,7 +883,7 @@ function openEquity(state,cs){let eq=state.cash;for(const [code,h] of state.hold
 function closeEquity(state,cs){let eq=state.cash;for(const [code,h] of state.holdings){const px=cs.prices.get(code)?.close;if(Number.isFinite(px))eq+=h.shares*px}return eq}
 function accountMaxDrawdown(curve){let peak=-Infinity,mdd=0;for(const x of curve){if(x.equity>peak)peak=x.equity;if(peak>0)mdd=Math.min(mdd,x.equity/peak-1)}return mdd}
 function simulateAccountWindow(data,dates,cfg,detail=true){
- const side=cfg.costBps/20000,state={cash:cfg.capital,holdings:new Map()},curve=[],actions=[],blocked=[],tradeGross=0,tradeCount=0,invested=[];
+ const side=cfg.costBps/20000,state={cash:cfg.capital,holdings:new Map()},curve=[],actions=[],blocked=[],invested=[];let tradeGross=0,tradeCount=0;
  for(const d of dates){
    const cs=historicalCrossSection(data,d);if(cs.scored.length<6||cs.prices.size<6)continue;
    const ranked=cs.scored,rankMap=new Map(ranked.map((x,i)=>[x.code,i+1])),scoreMap=new Map(ranked.map(x=>[x.code,x.DCore]));
