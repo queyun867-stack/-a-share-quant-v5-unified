@@ -52,6 +52,19 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="icBody" class="small"></div>
 </div>
 <div class="card">
+  <b>历史回放实验室</b><span class="small">只使用已冻结盘前快照 + 后续真实K线；禁止用当前模型重算历史候选，避免未来数据污染。</span>
+  <div class="metricGrid">
+    <div class="field"><label>观察周期</label><select id="labHorizon"><option value="r1">1日</option><option value="r3">3日</option><option value="r5" selected>5日</option><option value="r10">10日</option></select></div>
+    <div class="field"><label>执行规则</label><select id="labRule"><option value="D5">D Top5</option><option value="X_PASS">X-PASS</option><option value="X_PC">X PASS+CAUTION</option><option value="P1">P1</option></select></div>
+    <div class="field"><label>样本版本</label><select id="labModel"><option value="all">全部冻结版本（研究）</option><option value="current">仅当前V6.6规则</option></select></div>
+    <div class="field"><label>往返摩擦成本（bp）</label><input id="labCostBps" inputmode="decimal" value="20"></div>
+  </div>
+  <div class="toolbar"><button id="runReplayLab" class="blue">运行完整回放</button><button id="runReplayRandom">随机稳健性×200</button><button id="pickRandomArchive">随机抽一日回放</button></div>
+  <div id="replayLabStatus" class="small">先点“更新多周期结算”，再运行回放。样本少于20个交易日时只做研究，不自动调参。</div>
+  <div id="replayLabSummary" class="scoreStrip"></div>
+  <div id="replayLabBody"></div>
+</div>
+<div class="card">
   <b>执行风险闸门 X-Gate</b>
   <div class="metricGrid">
     <div class="field"><label>执行风格</label><select id="execStyle"><option value="aggressive">进取（默认）</option><option value="balanced">稳健（V6.2口径）</option></select></div>
@@ -209,7 +222,7 @@ setTimeout(function(){
 </script>
 <script>
 const MODEL_VERSION='6.6';
-const APP_BUILD='6.6.1';
+const APP_BUILD='6.6.2';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION}`;
 const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v4-equity-aware-aggressive | HoldingState=v2 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
@@ -600,7 +613,7 @@ async function settleEligibleRuns(){
    settled=[...settledMap.values()];
    saveSettlements(settled);
    $('calibStatus').textContent=`结算完成：更新${todo.length}个真实官方盘前快照；成熟周期已自动补齐。`;
- }finally{$('settleRuns').disabled=false;renderCalibration()}
+ }finally{$('settleRuns').disabled=false;renderCalibration();renderReplayLab()}
 }
 function renderCalibration(){
  const ss=loadSettlements(),rows=ss.flatMap(s=>(s.obs||[]).map(o=>({...o,tradeDate:o.tradeDate||s.tradeDate,channel:o.channel||s.channel,sampleKey:o.sampleKey||`${s.tradeDate}|${s.channel}`}))),days=[...new Set(ss.map(x=>x.tradeDate))].length;
@@ -617,6 +630,107 @@ function renderCalibration(){
  $('icBody').innerHTML=`官方真实样本：${days}个交易日；当前${h}日成熟 ${matureDays}日 / ${agg.all.n}条。观测成熟度：${maturity}。${enough?'已达到可讨论调参的最低门槛。':'<b>当前周期不足20个交易日：禁止自动调权。</b>'} `+
    (ics.length?'RankIC：'+ics.map(([k,v])=>`${k} ${v.toFixed(2)}`).join(' · '):'RankIC待积累。');
 }
+
+function replayLabConfig(){
+ const horizon=$('labHorizon')?.value||'r5';
+ const rule=$('labRule')?.value||'D5';
+ const model=$('labModel')?.value||'all';
+ const costBps=Math.max(0,Math.min(200,+($('labCostBps')?.value||20)));
+ return{horizon,rule,model,costBps,cost:costBps/10000}
+}
+function replayLabSettlements(model='all'){
+ const ss=loadSettlements();
+ return model==='current'?ss.filter(x=>(x.modelRuleId||'legacy')===MODEL_RULE_ID):ss
+}
+function replayLabPick(rows,rule){
+ const a=[...(rows||[])];
+ if(rule==='D5')return a.sort((x,y)=>(y.D||-999)-(x.D||-999)).slice(0,5);
+ if(rule==='X_PASS')return a.filter(x=>x.X==='PASS').sort((x,y)=>(y.XScore||-999)-(x.XScore||-999)).slice(0,5);
+ if(rule==='X_PC')return a.filter(x=>x.X==='PASS'||x.X==='CAUTION').sort((x,y)=>{
+   const ga=x.X==='PASS'?2:1,gb=y.X==='PASS'?2:1;return gb-ga||(y.XScore||-999)-(x.XScore||-999)
+ }).slice(0,5);
+ if(rule==='P1')return a.filter(x=>x.PG==='P1').sort((x,y)=>(y.PGScore||-999)-(x.PGScore||-999)).slice(0,5);
+ return []
+}
+function replayLabEvents(cfg=replayLabConfig()){
+ const ss=replayLabSettlements(cfg.model),h=cfg.horizon;
+ const events=[];
+ for(const st of ss){
+   const valid=(st.obs||[]).filter(x=>Number.isFinite(x[h]));
+   const pick=replayLabPick(valid,cfg.rule);
+   if(!pick.length)continue;
+   const rs=pick.map(x=>x[h]-cfg.cost).filter(Number.isFinite);
+   if(!rs.length)continue;
+   const n=horizonNumber(h),maeKey=`mae${n}`,mfeKey=`mfe${n}`;
+   events.push({
+     tradeDate:st.tradeDate,channel:st.channel,modelVersion:st.modelVersion||'legacy',modelRuleId:st.modelRuleId||'legacy',
+     n:rs.length,ret:mean(rs),hit:rs.filter(x=>x>0).length/rs.length,
+     mae:mean(pick.map(x=>x[maeKey]).filter(Number.isFinite)),mfe:mean(pick.map(x=>x[mfeKey]).filter(Number.isFinite)),
+     worst:Math.min(...rs),best:Math.max(...rs),codes:pick.map(x=>x.code)
+   })
+ }
+ return events.sort((a,b)=>String(a.tradeDate).localeCompare(String(b.tradeDate)))
+}
+function maxEventDrawdown(events){
+ let nav=1,peak=1,mdd=0;
+ for(const e of events){nav*=Math.max(.01,1+e.ret);peak=Math.max(peak,nav);mdd=Math.min(mdd,nav/peak-1)}
+ return mdd
+}
+function percentileVals(a,p){
+ const x=a.filter(Number.isFinite).sort((m,n)=>m-n);if(!x.length)return NaN;
+ const z=(x.length-1)*p,i=Math.floor(z),j=Math.ceil(z);return i===j?x[i]:x[i]+(x[j]-x[i])*(z-i)
+}
+function replayRuleLabel(r){return r==='D5'?'D Top5':r==='X_PASS'?'X-PASS':r==='X_PC'?'X PASS+CAUTION':'P1'}
+function replayLabStats(events){
+ const rets=events.map(x=>x.ret),trades=events.reduce((s,x)=>s+x.n,0);
+ return{days:events.length,trades,avg:mean(rets),med:median(rets),hit:events.length?events.filter(x=>x.ret>0).length/events.length:NaN,
+   avgHit:mean(events.map(x=>x.hit)),mae:mean(events.map(x=>x.mae)),mfe:mean(events.map(x=>x.mfe)),worst:rets.length?Math.min(...rets):NaN,mdd:maxEventDrawdown(events)}
+}
+function renderReplayLab(randomResult=null){
+ if(!$('replayLabSummary'))return;
+ const cfg=replayLabConfig(),events=replayLabEvents(cfg),st=replayLabStats(events),h=horizonNumber(cfg.horizon);
+ const eligible=st.days>=20;
+ const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
+ if(!events.length){
+   $('replayLabSummary').innerHTML='';
+   $('replayLabBody').innerHTML='<div class="audit"><b>暂无可用成熟样本</b><div class="small">先在“真实盘前精度校准”点击更新结算。若选择“仅当前V6.6规则”，需要未来积累真实官方盘前快照后才会出现样本。</div></div>';
+   $('replayLabStatus').textContent='当前组合没有可回放的成熟冻结样本。';return
+ }
+ $('replayLabSummary').innerHTML=
+   box(st.days,`${h}日样本事件`,`交易笔数 ${st.trades}`)+
+   box(pct(st.hit,0),'事件命中率',`单股平均命中 ${pct(st.avgHit,0)}`)+
+   box(pct(st.avg),'事件平均收益',`中位 ${pct(st.med)} · 成本${cfg.costBps.toFixed(0)}bp`)+
+   box(pct(st.worst),'最差事件',`平均MFE ${pct(st.mfe)} · MAE ${pct(st.mae)}`);
+ const byRule=new Map();
+ for(const e of events){const k=e.modelRuleId||'legacy';if(!byRule.has(k))byRule.set(k,[]);byRule.get(k).push(e)}
+ const versionRows=[...byRule.entries()].sort((a,b)=>b[1].length-a[1].length).map(([k,a])=>{
+   const z=replayLabStats(a),mv=a[0]?.modelVersion||'legacy';
+   return `<tr><td>V${mv}</td><td>${a.length}</td><td>${a.reduce((s,x)=>s+x.n,0)}</td><td>${pct(z.hit,0)}</td><td>${pct(z.avg)}</td><td>${pct(z.worst)}</td><td>${k}</td></tr>`
+ }).join('');
+ const randomHtml=randomResult?`<div class="audit"><b>随机稳健性 · 200轮Bootstrap</b><div class="small">每轮从当前${events.length}个冻结事件中有放回抽取${randomResult.n}个事件；仅检验样本稳定性，不等同真实账户蒙特卡洛。</div><div class="riskbar"><span class="risk green">平均收益P50 ${pct(randomResult.mean50)}</span><span class="risk">P10 ${pct(randomResult.mean10)}</span><span class="risk">P90 ${pct(randomResult.mean90)}</span><span class="risk">命中率P50 ${pct(randomResult.hit50,0)}</span><span class="risk ${randomResult.mean10<0?'red':'green'}">P10均值 ${randomResult.mean10<0?'为负':'为正'}</span></div></div>`:'';
+ $('replayLabBody').innerHTML=`<div class="audit"><b>${replayRuleLabel(cfg.rule)} · ${h}日 · ${cfg.model==='current'?'仅当前规则':'全部冻结版本'}</b><div class="small">${eligible?'样本达到20个事件的最低研究门槛。':'样本不足20个事件：结果只能观察，禁止据此自动调权。'} “事件序列回撤”=${pct(st.mdd)}；${h>1?'多日持有窗口可能重叠，因此不把事件复利解释为真实账户净值。':'1日事件可近似顺序观察，但仍未模拟真实撮合、涨跌停和容量。'}</div></div>${randomHtml}
+ <div class="sectionTitle">冻结版本样本对照</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>版本</th><th>事件</th><th>笔数</th><th>命中</th><th>均值</th><th>最差</th><th>Rule</th></tr></thead><tbody>${versionRows}</tbody></table></div>
+ <div class="small">不同版本通常来自不同交易日，不能把这张表当作同日A/B胜负；只有同一日期保存了两套冻结信号时才具备严格版本对照意义。</div>`;
+ $('replayLabStatus').textContent=`已回放 ${events.length} 个冻结事件 / ${st.trades} 笔候选；规则=${replayRuleLabel(cfg.rule)}，周期=${h}日，摩擦=${cfg.costBps.toFixed(0)}bp。`
+}
+function runReplayRandom(){
+ const cfg=replayLabConfig(),events=replayLabEvents(cfg);
+ if(events.length<2){renderReplayLab();return}
+ const n=Math.max(3,Math.min(20,events.length));
+ const means=[],hits=[];
+ for(let k=0;k<200;k++){
+   const sample=[];for(let i=0;i<n;i++)sample.push(events[Math.floor(Math.random()*events.length)]);
+   means.push(mean(sample.map(x=>x.ret)));hits.push(sample.filter(x=>x.ret>0).length/sample.length)
+ }
+ renderReplayLab({n,mean10:percentileVals(means,.10),mean50:percentileVals(means,.50),mean90:percentileVals(means,.90),hit50:percentileVals(hits,.50)})
+}
+function pickRandomArchive(){
+ const settled=new Set(loadSettlements().map(x=>`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`));
+ const runs=loadPremarketRuns().filter(x=>(x.kind==='official'||x.kind==='legacy')&&settled.has(`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`));
+ if(!runs.length){$('replayLabStatus').textContent='暂无“已冻结且已结算”的历史快照可随机回放。';return}
+ const r=runs[Math.floor(Math.random()*runs.length)];replayArchiveRun(r.archiveId)
+}
+
 function versionGuardInfo(){
  const app=String(window.__A_SHARE_APP_VERSION__||'');
  const titleOk=document.title.includes(`V${MODEL_VERSION}`);
@@ -1683,6 +1797,10 @@ if($('archiveClose'))$('archiveClose').onclick=()=>{$('archiveModal').hidden=tru
 if($('settleRuns'))$('settleRuns').onclick=settleEligibleRuns;
 document.querySelectorAll('#calibHorizon [data-h]').forEach(b=>b.onclick=()=>{calibHorizon=b.dataset.h;renderCalibration()});
 if($('saveExecCfg'))$('saveExecCfg').onclick=saveExecConfig;
+if($('runReplayLab'))$('runReplayLab').onclick=()=>renderReplayLab();
+if($('runReplayRandom'))$('runReplayRandom').onclick=runReplayRandom;
+if($('pickRandomArchive'))$('pickRandomArchive').onclick=pickRandomArchive;
+['labHorizon','labRule','labModel','labCostBps'].forEach(id=>{if($(id))$(id).onchange=()=>renderReplayLab()});
 document.querySelectorAll('#candidateChannel [data-channel]').forEach(b=>{
     b.classList.toggle('on',b.dataset.channel===candidateChannel)
   })
@@ -2183,6 +2301,7 @@ if($('refresh'))$('refresh').onclick=refresh;
 if($('clear'))$('clear').onclick=()=>{M=[];F=[];FT=[];CA=[];CT=[];localStorage.removeItem('v511m');localStorage.removeItem('v511ca');localStorage.removeItem('v511ct');clearScanCheckpoint();stickyMarketHost=null;save();prep();render();$('deepAll').disabled=true;$('deepTech').disabled=true};
 if($('reset'))$('reset').onclick=()=>{W=seed.map(x=>({...x}));save();render()};
 load();
+renderReplayLab();
 let __lastAutoMode=modeKey();
 setInterval(()=>{
   if(modePref!=='auto')return;
