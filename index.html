@@ -25,7 +25,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="modelLock" class="audit"></div>
   <div id="auditStrip" class="scoreStrip"></div>
 </div>
-<div class="note"><b>V6.6.1维护构建：交易模型仍为V6.6。</b> 已修复页面标题/内部版本标记不一致，并把启动成功标记移动到完整初始化之后；新增版本一致性自检。<br><b>V6.6修正“上涨后反而压缩可用现金”的组合计算错误，并重新校准进取档。</b> 可用现金按持仓成本占用计算，单股仓位与风险预算按动态权益计算；进取档默认单笔计划损失升级为2.00%，P1/CAUTION首仓提高到目标仓的75%/45%。持续流出、严重过热、最小1手超限或真实容量不足仍保持硬拦截。</div>
+<div class="note"><b>V6.6.3验证增强：交易模型仍为V6.6。</b> 官方盘前样本继续严格只认“当时真实冻结”的记录；新增固定科技池历史仿真，用历史日期前可见的K线/资金重建D-Core，用来立即检查排序稳定性，但永久与官方校准隔离。<br><b>V6.6修正“上涨后反而压缩可用现金”的组合计算错误，并重新校准进取档。</b> 可用现金按持仓成本占用计算，单股仓位与风险预算按动态权益计算；进取档默认单笔计划损失升级为2.00%，P1/CAUTION首仓提高到目标仓的75%/45%。持续流出、严重过热、最小1手超限或真实容量不足仍保持硬拦截。</div>
 
 <section id="market">
 <div class="card">
@@ -63,6 +63,20 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="replayLabStatus" class="small">先点“更新多周期结算”，再运行回放。样本少于20个交易日时只做研究，不自动调参。</div>
   <div id="replayLabSummary" class="scoreStrip"></div>
   <div id="replayLabBody"></div>
+</div>
+<div class="card">
+  <b>固定科技池历史仿真（研究）</b><span class="small">当官方冻结样本为0时，可先用12只基线科技股做point-in-time研究。每个历史交易日只使用该日前的K线/资金计算D-Core，再用随后真实价格结算；不使用未来数据，但存在固定股票池/幸存者偏差，因此绝不进入官方校准。</span>
+  <div class="metricGrid">
+    <div class="field"><label>观察周期</label><select id="simHorizon"><option value="1">1日</option><option value="3">3日</option><option value="5" selected>5日</option><option value="10">10日</option></select></div>
+    <div class="field"><label>历史事件数</label><select id="simEvents"><option value="20">20日</option><option value="40" selected>40日</option><option value="60">60日</option></select></div>
+    <div class="field"><label>选股规则</label><select id="simRule"><option value="D5" selected>D-Core Top5</option><option value="D3">D-Core Top3</option></select></div>
+    <div class="field"><label>往返摩擦成本（bp）</label><input id="simCostBps" inputmode="decimal" value="20"></div>
+  </div>
+  <div class="toolbar"><button id="runHistSim" class="blue">运行历史仿真</button></div>
+  <div id="histSimStatus" class="small">这是研究轨，不会写入“真实盘前精度校准”。首次运行需读取12只基线股的历史K线与资金。</div>
+  <div class="bar"><i id="histSimBar"></i></div>
+  <div id="histSimSummary" class="scoreStrip"></div>
+  <div id="histSimBody"></div>
 </div>
 <div class="card">
   <b>执行风险闸门 X-Gate</b>
@@ -222,7 +236,7 @@ setTimeout(function(){
 </script>
 <script>
 const MODEL_VERSION='6.6';
-const APP_BUILD='6.6.2';
+const APP_BUILD='6.6.3';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION}`;
 const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v4-equity-aware-aggressive | HoldingState=v2 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
@@ -602,7 +616,8 @@ async function settleEligibleRuns(){
  let settled=loadSettlements(),settledMap=new Map(settled.map(x=>[`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`,x]));
  const uniqueRuns=[...new Map(runs.map(x=>[`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`,x])).values()];
  const todo=uniqueRuns.filter(x=>!settledMap.get(`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`)?.complete);
- if(!todo.length){$('calibStatus').textContent='所有真实官方盘前快照均已完成10日结算。';renderCalibration();return}
+ if(!uniqueRuns.length){$('calibStatus').textContent='当前没有真实官方盘前快照可结算。结算按钮只补齐已有冻结快照的后续收益，不能凭空回填过去日期。';renderCalibration();renderReplayLab();return}
+ if(!todo.length){$('calibStatus').textContent='所有已有真实官方盘前快照均已完成10日结算。';renderCalibration();return}
  $('settleRuns').disabled=true;
  try{
    for(const r of todo){
@@ -627,7 +642,7 @@ function renderCalibration(){
  const matureDays=[...new Set(ss.filter(x=>(x.obs||[]).some(o=>Number.isFinite(o[calibHorizon]))).map(x=>x.tradeDate))].length;
  const maturity=[1,3,5,10].map(n=>`${n}日 ${(rows.filter(x=>Number.isFinite(x[`r${n}`])).length)}`).join(' · ');
  const enough=matureDays>=20;
- $('icBody').innerHTML=`官方真实样本：${days}个交易日；当前${h}日成熟 ${matureDays}日 / ${agg.all.n}条。观测成熟度：${maturity}。${enough?'已达到可讨论调参的最低门槛。':'<b>当前周期不足20个交易日：禁止自动调权。</b>'} `+
+ $('icBody').innerHTML=`官方真实样本：${days}个交易日；当前${h}日成熟 ${matureDays}日 / ${agg.all.n}条。观测成熟度：${maturity}。${days===0?'<b>目前为0是正常的：只有在真实交易日盘前完成冻结深扫后才会产生官方样本；“更新结算”不能回造历史。</b> ':enough?'已达到可讨论调参的最低门槛。':'<b>当前周期不足20个交易日：禁止自动调权。</b> '}`+
    (ics.length?'RankIC：'+ics.map(([k,v])=>`${k} ${v.toFixed(2)}`).join(' · '):'RankIC待积累。');
 }
 
@@ -729,6 +744,86 @@ function pickRandomArchive(){
  const runs=loadPremarketRuns().filter(x=>(x.kind==='official'||x.kind==='legacy')&&settled.has(`${x.tradeDate}|${x.channel}|${x.modelRuleId||'legacy'}`));
  if(!runs.length){$('replayLabStatus').textContent='暂无“已冻结且已结算”的历史快照可随机回放。';return}
  const r=runs[Math.floor(Math.random()*runs.length)];replayArchiveRun(r.archiveId)
+}
+
+
+const histSimCache=new Map();
+function flowHistoryUrl(code){
+ const p=new URLSearchParams({secid:secid(code),klt:'101',lmt:'500',fields1:'f1,f2,f3,f7',fields2:'f51,f52,f53,f54,f55,f56,f57'});
+ return 'https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?'+p.toString()
+}
+async function getHistSimData(stock){
+ if(histSimCache.has(stock.code))return histSimCache.get(stock.code);
+ const task=(async()=>{
+   let k=await getTencentKline(stock.code);
+   if(k.length<180){
+     try{const j=await jsonp(emKlineUrl(stock.code),14000),lines=j?.data?.klines||[];const ek=lines.map(s=>{const a=String(s).split(',');return{date:a[0],open:+a[1],close:+a[2],high:+a[3],low:+a[4],amount:+a[6]}}).filter(x=>Number.isFinite(x.close));if(ek.length>k.length)k=ek}catch{}
+   }
+   let f=[];
+   try{const j=await jsonp(flowHistoryUrl(stock.code),14000),lines=j?.data?.klines||[];f=lines.map(s=>{const a=String(s).split(',');return{date:a[0],main_net:+a[1],main_pct:+a[6]}}).filter(x=>Number.isFinite(x.main_net))}catch{}
+   return{stock,k,f}
+ })();
+ histSimCache.set(stock.code,task);return task
+}
+function scoreHistoricalCore(rows){
+ const rr=rank(rows,'r60'),r1=rank(rows,'flowPct'),r5=rank(rows,'p5'),r10=rank(rows,'p10'),rn5=rank(rows,'sum5'),racc=rank(rows,'accel');
+ return rows.map(r=>{
+   const near=Math.max(0,100-Math.abs(r.d20)/.08*100),pull=Math.max(0,100-Math.abs(r.dd20-.08)/.08*100);
+   const E=mean([rr.get(r),r.align,near,pull]);
+   let rawF;
+   if(r.flowLite)rawF=mean([r1.get(r)||50,50]);
+   else rawF=.25*(r1.get(r)||50)+.20*(r5.get(r)||50)+.15*(r10.get(r)||50)+.18*(rn5.get(r)||50)+.12*(Number.isFinite(r.pos10)?r.pos10:50)+.10*(racc.get(r)||50);
+   const Fv=r.flowLite?50+(rawF-50)*.58:rawF,L=mean([r.align,near,pull,Fv]);
+   return{...r,E,F:Fv,L,DCore:.45*E+.35*Fv+.20*L}
+ })
+}
+function histSimConfig(){
+ return{h:+($('simHorizon')?.value||5),events:+($('simEvents')?.value||40),rule:$('simRule')?.value||'D5',costBps:Math.max(0,Math.min(200,+($('simCostBps')?.value||20)))}
+}
+function histEventStats(events){
+ const rs=events.map(x=>x.ret).filter(Number.isFinite),xs=events.map(x=>x.excess).filter(Number.isFinite);
+ return{n:events.length,avg:mean(rs),med:median(rs),hit:rs.length?rs.filter(x=>x>0).length/rs.length:NaN,worst:rs.length?Math.min(...rs):NaN,base:mean(events.map(x=>x.base).filter(Number.isFinite)),excess:mean(xs),beat:xs.length?xs.filter(x=>x>0).length/xs.length:NaN,mdd:maxEventDrawdown(events)}
+}
+async function runHistoricalSimulation(){
+ if(!$('histSimStatus'))return;
+ const cfg=histSimConfig(),btn=$('runHistSim');btn.disabled=true;$('histSimBar').style.width='2%';$('histSimSummary').innerHTML='';$('histSimBody').innerHTML='';
+ $('histSimStatus').textContent='正在读取12只基线科技股历史数据…';
+ try{
+   const stocks=seed.map(x=>({code:x.code,name:x.name,Q:x.Q}));
+   const data=[];
+   for(let i=0;i<stocks.length;i++){
+     try{data.push(await getHistSimData(stocks[i]))}catch{}
+     $('histSimBar').style.width=Math.round((i+1)/stocks.length*35)+'%';
+     $('histSimStatus').textContent=`历史数据 ${i+1}/${stocks.length}：成功${data.length}只`;
+   }
+   if(data.length<6)throw Error('历史数据可用股票不足6只，暂时无法形成研究横截面');
+   const anchor=data[0].k.map(x=>x.date).filter(Boolean),h=cfg.h;
+   const eligible=anchor.filter((d,idx)=>idx>=130&&idx+h-1<anchor.length).slice(-Math.max(cfg.events+12,cfg.events));
+   const dates=eligible.slice(-cfg.events),events=[];
+   for(let di=0;di<dates.length;di++){
+     const d=dates[di],raw=[],real=[];
+     for(const z of data){
+       const j=z.k.findIndex(x=>String(x.date).slice(0,10)===d);if(j<0||j+h-1>=z.k.length)continue;
+       const histK=z.k.slice(0,j),histF=z.f.filter(x=>String(x.date).slice(0,10)<d);const p=pmet(histK);if(!p)continue;const fm=histF.length?fmet(histF):{flowPct:0,p3:0,p5:0,p10:0,pos10:50,accel:0,sum1:0,sum3:0,sum5:0,sum10:0,flowDate:''};
+       raw.push({...z.stock,...p,...fm,flowLite:!histF.length,flowDays:histF.length});
+       const entry=z.k[j],end=z.k[j+h-1];if(Number.isFinite(entry?.open)&&entry.open>0&&Number.isFinite(end?.close))real.push({code:z.stock.code,ret:end.close/entry.open-1});
+     }
+     if(raw.length<6||real.length<6)continue;
+     const scored=scoreHistoricalCore(raw),n=cfg.rule==='D3'?3:5,picks=[...scored].sort((a,b)=>b.DCore-a.DCore).slice(0,n),map=new Map(real.map(x=>[x.code,x.ret]));
+     const prs=picks.map(x=>map.get(x.code)).filter(Number.isFinite),all=real.map(x=>x.ret).filter(Number.isFinite);if(!prs.length||!all.length)continue;
+     const cost=cfg.costBps/10000,retv=mean(prs)-cost,base=mean(all)-cost;
+     events.push({tradeDate:d,ret:retv,base,excess:retv-base,n:prs.length,codes:picks.map(x=>x.code)})
+     $('histSimBar').style.width=(35+Math.round((di+1)/Math.max(1,dates.length)*65))+'%';
+     if(di%5===0)$('histSimStatus').textContent=`正在历史仿真 ${di+1}/${dates.length}：已形成${events.length}个事件`;
+     await new Promise(r=>setTimeout(r,20))
+   }
+   const st=histEventStats(events);if(!events.length)throw Error('没有形成可结算历史事件');
+   const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
+   $('histSimSummary').innerHTML=box(st.n,'历史事件',`${cfg.rule==='D3'?'Top3':'Top5'} · ${cfg.h}日`)+box(pct(st.avg),'D-Core平均收益',`中位 ${pct(st.med)} · 命中 ${pct(st.hit,0)}`)+box(pct(st.excess),'相对固定池超额',`胜过等权池 ${pct(st.beat,0)}`)+box(pct(st.worst),'最差事件',`事件序列回撤 ${pct(st.mdd)}`);
+   const rows=events.slice(-12).reverse().map(e=>`<tr><td>${e.tradeDate}</td><td>${pct(e.ret)}</td><td>${pct(e.base)}</td><td>${pct(e.excess)}</td><td>${e.codes.join(',')}</td></tr>`).join('');
+   $('histSimBody').innerHTML=`<div class="audit"><b>研究轨结果，不是官方回测</b><div class="small">特征只用每个历史日期之前的数据，收益用该日开盘至第${cfg.h}日收盘；已扣${cfg.costBps}bp往返摩擦。股票池固定为当前12只基线科技股，因此存在明显幸存者/选池偏差；它只能检验D-Core在固定池内的排序是否有信息量，不能代表全市场选股真实收益，也不会写入官方样本。</div></div><div class="sectionTitle">最近12个研究事件</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>日期</th><th>D-Core</th><th>固定池</th><th>超额</th><th>入选代码</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+   $('histSimStatus').textContent=`完成：${events.length}个历史事件；固定池可用${data.length}/12只。此结果仅作研究，不触发模型自动调权。`;$('histSimBar').style.width='100%'
+ }catch(e){$('histSimStatus').textContent='历史仿真失败：'+String(e.message||e);$('histSimBar').style.width='0%'}finally{btn.disabled=false}
 }
 
 function versionGuardInfo(){
@@ -1798,6 +1893,7 @@ if($('settleRuns'))$('settleRuns').onclick=settleEligibleRuns;
 document.querySelectorAll('#calibHorizon [data-h]').forEach(b=>b.onclick=()=>{calibHorizon=b.dataset.h;renderCalibration()});
 if($('saveExecCfg'))$('saveExecCfg').onclick=saveExecConfig;
 if($('runReplayLab'))$('runReplayLab').onclick=()=>renderReplayLab();
+if($('runHistSim'))$('runHistSim').onclick=runHistoricalSimulation;
 if($('runReplayRandom'))$('runReplayRandom').onclick=runReplayRandom;
 if($('pickRandomArchive'))$('pickRandomArchive').onclick=pickRandomArchive;
 ['labHorizon','labRule','labModel','labCostBps'].forEach(id=>{if($(id))$(id).onchange=()=>renderReplayLab()});
