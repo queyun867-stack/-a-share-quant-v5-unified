@@ -1,20 +1,21 @@
 export const config = { maxDuration: 30 };
 
-const HOSTS = [
+const EM_HOSTS = [
   'https://push2.eastmoney.com',
   'https://7.push2.eastmoney.com',
   'https://43.push2.eastmoney.com',
   'https://89.push2.eastmoney.com'
 ];
 
-const UA = 'Mozilla/5.0 AShareQuant/10.0.1';
+const UA = 'Mozilla/5.0 AShareQuant/10.0.3';
 
 function secid(code) {
   return /^(6|68)/.test(code) ? `1.${code}` : `0.${code}`;
 }
 
-function parseData(text) {
+function parseMaybeJsonp(text) {
   const t = String(text || '').trim();
+  if (!t) throw new Error('empty upstream response');
 
   try {
     return JSON.parse(t);
@@ -30,32 +31,34 @@ function parseData(text) {
   throw new Error('invalid upstream response');
 }
 
-async function request(url, timeout = 9000) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
+async function fetchParsed(url, timeout = 8500) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
 
   try {
     const r = await fetch(url, {
-      signal: controller.signal,
+      signal: ctrl.signal,
       headers: {
         'user-agent': UA,
-        accept: 'application/json,text/javascript,*/*',
-        referer: 'https://quote.eastmoney.com/'
+        'accept': 'application/json,text/javascript,*/*;q=0.8',
+        'referer': 'https://quote.eastmoney.com/'
       }
     });
 
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    if (!r.ok) {
+      throw new Error(`upstream HTTP ${r.status}`);
+    }
 
-    return parseData(await r.text());
+    return parseMaybeJsonp(await r.text());
   } finally {
     clearTimeout(timer);
   }
 }
 
-function marketUrl(host, page, size) {
+function marketUrl(host, page, pz) {
   const p = new URLSearchParams({
     pn: String(page),
-    pz: String(size),
+    pz: String(pz),
     po: '1',
     np: '1',
     fltt: '2',
@@ -100,10 +103,10 @@ function flowUrl(code) {
 function quoteUrl(code) {
   const p = new URLSearchParams({
     secid: secid(code),
-    fltt: '2',
-    invt: '2',
     fields:
-      'f43,f57,f58,f169,f170,f46,f44,f45,f47,f48,f60,f62,f184,f168,f100'
+      'f43,f57,f58,f169,f170,f46,f44,f45,f47,f48,f60,f62,f184,f168,f100',
+    fltt: '2',
+    invt: '2'
   });
 
   return `https://push2.eastmoney.com/api/qt/stock/get?${p}`;
@@ -136,61 +139,355 @@ function newsUrl(code) {
   );
 }
 
-function send(res, status, data, cache = 20) {
-  res.setHeader('content-type', 'application/json; charset=utf-8');
+function send(res, status, data, maxAge = 20) {
+  res.setHeader(
+    'content-type',
+    'application/json; charset=utf-8'
+  );
+
   res.setHeader(
     'cache-control',
-    `public, s-maxage=${cache}, stale-while-revalidate=60`
+    `public, s-maxage=${maxAge}, stale-while-revalidate=${Math.max(
+      30,
+      maxAge * 3
+    )}`
   );
+
   res.status(status).send(JSON.stringify(data));
 }
 
+async function fetchMarketPage(page, pz = 100) {
+  let last;
+
+  for (const host of EM_HOSTS) {
+    try {
+      const j = await fetchParsed(
+        marketUrl(host, page, pz),
+        6500
+      );
+
+      if (j?.data) {
+        return j;
+      }
+    } catch (e) {
+      last = e;
+    }
+  }
+
+  throw last || new Error('market upstream unavailable');
+}
+
+async function mapLimit(items, n, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+
+  async function worker() {
+    while (true) {
+      const i = next++;
+
+      if (i >= items.length) {
+        return;
+      }
+
+      try {
+        out[i] = await fn(items[i], i);
+      } catch (e) {
+        out[i] = {
+          error: e?.message || String(e)
+        };
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.max(1, n) },
+      worker
+    )
+  );
+
+  return out;
+}
+
+function parseCodes(raw, max) {
+  return String(raw || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => /^\d{6}$/.test(s))
+    .slice(0, max);
+}
+
 export default async function handler(req, res) {
-  const url = new URL(req.url, 'http://localhost');
-  const action = url.searchParams.get('action') || '';
-  const code = url.searchParams.get('code') || '';
+  const u = new URL(
+    req.url,
+    'http://localhost'
+  );
+
+  const action =
+    u.searchParams.get('action') || '';
+
+  const code =
+    u.searchParams.get('code') || '';
 
   try {
     if (action === 'market') {
       const page = Math.max(
         1,
-        Math.min(30, Number(url.searchParams.get('page')) || 1)
+        Math.min(
+          100,
+          Number(
+            u.searchParams.get('page')
+          ) || 1
+        )
       );
 
-      const size = Math.max(
+      const pz = Math.max(
         20,
-        Math.min(500, Number(url.searchParams.get('pz')) || 500)
+        Math.min(
+          100,
+          Number(
+            u.searchParams.get('pz')
+          ) || 100
+        )
       );
 
-      let lastError = null;
+      return send(
+        res,
+        200,
+        await fetchMarketPage(page, pz),
+        10
+      );
+    }
 
-      for (const host of HOSTS) {
-        try {
-          const data = await request(
-            marketUrl(host, page, size),
-            7000
-          );
+    if (action === 'market_all') {
+      const pz = 100;
 
-          if (data?.data) {
-            return send(res, 200, data, 10);
+      const first =
+        await fetchMarketPage(1, pz);
+
+      const total =
+        +first?.data?.total || 0;
+
+      const pages = Math.max(
+        1,
+        Math.ceil(total / pz)
+      );
+
+      const rows = [
+        ...(first?.data?.diff || [])
+      ];
+
+      const pageNums = Array.from(
+        {
+          length: Math.max(
+            0,
+            pages - 1
+          )
+        },
+        (_, i) => i + 2
+      );
+
+      const fetched =
+        await mapLimit(
+          pageNums,
+          6,
+          async p => {
+            const j =
+              await fetchMarketPage(
+                p,
+                pz
+              );
+
+            return {
+              page: p,
+              rows:
+                j?.data?.diff || []
+            };
           }
-        } catch (e) {
-          lastError = e;
+        );
+
+      const failedPages = [];
+
+      for (
+        let i = 0;
+        i < fetched.length;
+        i++
+      ) {
+        const z = fetched[i];
+
+        if (z?.error) {
+          failedPages.push(
+            pageNums[i]
+          );
+        } else {
+          rows.push(
+            ...(z?.rows || [])
+          );
         }
       }
 
-      throw lastError || new Error('market unavailable');
+      return send(
+        res,
+        200,
+        {
+          data: {
+            total,
+            diff: rows,
+            failedPages
+          }
+        },
+        10
+      );
     }
 
-    if (!/^\d{6}$/.test(code)) {
-      return send(res, 400, { error: 'invalid stock code' }, 0);
+    if (action === 'deep_batch') {
+      const codes = parseCodes(
+        u.searchParams.get('codes'),
+        30
+      );
+
+      if (!codes.length) {
+        return send(
+          res,
+          400,
+          {
+            error:
+              'no valid codes'
+          },
+          0
+        );
+      }
+
+      const items =
+        await mapLimit(
+          codes,
+          5,
+          async c => {
+            const [
+              kline,
+              flow
+            ] =
+              await Promise.all([
+                fetchParsed(
+                  klineUrl(c),
+                  9000
+                ),
+                fetchParsed(
+                  flowUrl(c),
+                  9000
+                ).catch(
+                  () => null
+                )
+              ]);
+
+            return {
+              code: c,
+              kline,
+              flow
+            };
+          }
+        );
+
+      return send(
+        res,
+        200,
+        {
+          items: items.map(
+            (z, i) =>
+              z?.error
+                ? {
+                    code:
+                      codes[i],
+                    error:
+                      z.error
+                  }
+                : z
+          )
+        },
+        60
+      );
+    }
+
+    if (action === 'news_batch') {
+      const codes = parseCodes(
+        u.searchParams.get('codes'),
+        8
+      );
+
+      if (!codes.length) {
+        return send(
+          res,
+          400,
+          {
+            error:
+              'no valid codes'
+          },
+          0
+        );
+      }
+
+      const items =
+        await mapLimit(
+          codes,
+          4,
+          async c => {
+            const news =
+              await fetchParsed(
+                newsUrl(c),
+                9000
+              ).catch(
+                () => null
+              );
+
+            return {
+              code: c,
+              news
+            };
+          }
+        );
+
+      return send(
+        res,
+        200,
+        {
+          items: items.map(
+            (z, i) =>
+              z?.error
+                ? {
+                    code:
+                      codes[i],
+                    error:
+                      z.error
+                  }
+                : z
+          )
+        },
+        120
+      );
+    }
+
+    if (
+      !/^\d{6}$/.test(code)
+    ) {
+      return send(
+        res,
+        400,
+        {
+          error:
+            'invalid stock code'
+        },
+        0
+      );
     }
 
     if (action === 'kline') {
       return send(
         res,
         200,
-        await request(klineUrl(code)),
+        await fetchParsed(
+          klineUrl(code),
+          9000
+        ),
         300
       );
     }
@@ -199,7 +496,10 @@ export default async function handler(req, res) {
       return send(
         res,
         200,
-        await request(flowUrl(code)),
+        await fetchParsed(
+          flowUrl(code),
+          9000
+        ),
         120
       );
     }
@@ -208,7 +508,10 @@ export default async function handler(req, res) {
       return send(
         res,
         200,
-        await request(quoteUrl(code), 7000),
+        await fetchParsed(
+          quoteUrl(code),
+          7000
+        ),
         8
       );
     }
@@ -217,18 +520,31 @@ export default async function handler(req, res) {
       return send(
         res,
         200,
-        await request(newsUrl(code)),
+        await fetchParsed(
+          newsUrl(code),
+          9000
+        ),
         180
       );
     }
 
-    return send(res, 400, { error: 'unknown action' }, 0);
+    return send(
+      res,
+      400,
+      {
+        error:
+          'unknown action'
+      },
+      0
+    );
   } catch (e) {
     return send(
       res,
       502,
       {
-        error: e?.message || String(e),
+        error:
+          e?.message ||
+          String(e),
         action
       },
       0
