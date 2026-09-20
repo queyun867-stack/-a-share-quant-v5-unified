@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A股量化研究 V6.8.1</title>
+<title>A股量化研究 V7.0-S Research</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
 main{max-width:860px;margin:auto;padding:18px 12px 70px}.card,.note{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin:12px 0}.note{background:#eff6ff;color:#1e40af;line-height:1.6}
@@ -11,7 +11,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 .field select{border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#111827;width:100%;box-sizing:border-box}
 @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body><main>
-<h1>A股量化研究</h1><div class="sub">V6.8.1实时模型 · Build 6.9-Forward.1 · V6.9-R1前瞻影子验证</div>
+<h1>A股量化研究</h1><div class="sub">V6.8.1实时模型 · Build 7.0-S-R1 · 短线收益引擎研究版</div>
 <div class="tabs card"><button class="tab on" data-p="market">全市场</button><button class="tab" data-p="cand">候选池</button><button class="tab" data-p="focus">重点池</button><button class="tab" data-p="pos">持仓</button></div>
 <div class="card">
   <b>运行模式</b> <span id="modeBadge" class="pill"></span>
@@ -25,6 +25,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="modelLock" class="audit"></div>
   <div id="auditStrip" class="scoreStrip"></div>
 </div>
+<div class="note"><b>V7.0-S-R1 是独立短线研究模型，不改当前实时X-Gate，也不覆盖V6.9前瞻账本。</b> 目标固定为80,000元本金、主要持有2–8个交易日、同时2–3只为主。短线评分只使用交易日前已知的3/5/10日价格动量、3/5日资金持续性、20日位置/回撤和中期背景；允许现金，不强制凑满持仓。研究版参数在看到结果前冻结：Top3、短线分≥60、单股上限35%、20bp往返摩擦、最短持有2日、最长8日、开盘亏损≤-6%止损、浮盈轨迹达到8%后回撤4个百分点触发移动退出。<b>先验证短线账户分布，再决定是否进入新的OOS-S盲测；历史研究结果绝不直接替代真实盘前Forward。</b></div>
 <div class="note"><b>V6.8.1只改一个结构变量：合格候选不足5只时，不再机械按Top5平均分配目标仓位。</b> 仍保持D-Core≥55、30日主趋势、短周期风险过滤与35%单股上限；但目标风险仓位会按“当前实际可执行的高质量候选数”重新分配。目的不是降低选股门槛，而是减少V6.8因日均仅约2只合格候选而长期持有过多现金的问题。<b>实时X-Gate仍不变，先做连续账户A/B。</b></div>
 <div class="note"><b>本轮A/B纪律：</b> 一笔80,000元从最早可用历史日连续运行到最新日，中间不重置本金。V6.8.1与V6.8使用完全相同的股票质量门槛、趋势规则、交易成本和卖出纪律；唯一差异是仓位分配。V6.8.1在1/2/3/4/5只合格可执行候选时，分别按实际候选数分配目标风险仓位，同时仍受单股35%硬上限约束。这样可以直接检验“少而精时提高资金利用率”是否提高8万元最终收益，而不是靠降低门槛凑仓位。</div>
 <div class="note"><b>Build 6.8.2不改交易规则，只做收益归因审计。</b> 它把V6.8.1全历史连续账户里的每笔完整交易拆成：入场时合格候选数、市场阶段、D-Core分数段、持有天数、退出原因、净收益、MFE/MAE，以及卖出后第5/10个交易日的价格表现。<b>本轮只定位“什么动作真正创造/损失了8万元账户收益”，不再利用OOS-2结果调参；后续任何策略改动必须进入新的OOS-3。</b></div>
@@ -83,6 +84,14 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div class="bar"><i id="histSimBar"></i></div>
   <div id="histSimSummary" class="scoreStrip"></div>
   <div id="histSimBody"></div>
+</div>
+<div class="card" id="shortResearchCard">
+  <b>V7.0-S 短线收益引擎（研究）</b><span class="small">固定8万元，主要持有2–8日。V6.9继续作为中期趋势对照；本模块不写入实时X-Gate与正式Forward样本。</span>
+  <div class="toolbar"><button id="runV70ShortFull" class="blue">V7.0-S 全历史连续账户</button><button id="runV70ShortWindows">短线窗口测试 3/5/8/10/15日</button></div>
+  <div id="shortStatus" class="small">参数已预注册：Top3、S≥60、单股≤35%、20bp、最短2日、最长8日、-6%开盘止损、8%MFE后回撤4pct移动退出。请先跑全历史，再跑短线窗口分布。</div>
+  <div class="bar"><i id="shortBar"></i></div>
+  <div id="shortSummary" class="scoreStrip"></div>
+  <div id="shortBody"></div>
 </div>
 <div class="card">
   <b>历史研究与归因（已冻结）</b><span class="small">V6.9-R1已通过OOS-3；这些按钮保留用于审计复现，不再据此继续调参。新的晋级依据改为下方“前瞻影子验证”。</span>
@@ -278,7 +287,7 @@ setTimeout(function(){
 </script>
 <script>
 const MODEL_VERSION='6.8.1';
-const APP_BUILD='6.9-forward1';
+const APP_BUILD='7.0-S-R1';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION} · Build ${APP_BUILD}`;
 const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v5-regime2-stable | HoldingState=v3-winner-hold | ResearchAccount=v681-dynamic-qualified-sizing | ForwardShadow=v1-v69-v681 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
@@ -1147,6 +1156,96 @@ async function runAccountBlind(){
  }catch(e){$('acctReplayStatus').textContent='V6.8.1 OOS-2失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false;if($('runAcctStress'))$('runAcctStress').disabled=false;if($('runV68Full'))$('runV68Full').disabled=false}
 }
 
+
+// ===== V7.0-S-R1 short-horizon research engine =====
+function v70ShortConfig(){return{capital:80000,topN:3,minScore:60,maxPct:.35,costBps:20,minHold:2,maxHold:8,stopLoss:-.06,trailTrigger:.08,trailGiveback:.04,swapGap:12,strongUtil:.90,neutralUtil:.70,weakUtil:.35,engineId:'v70s-r1-frozen'}}
+function v70ShortScoreRows(rows){
+ const r3=rank(rows,'r3'),r5=rank(rows,'r5'),r10=rank(rows,'r10'),r20=rank(rows,'r20'),p3=rank(rows,'p3'),p5=rank(rows,'p5'),acc=rank(rows,'accel'),pos=rank(rows,'pos10');
+ return rows.map(r=>{
+   const mom=.35*(r3.get(r)||50)+.40*(r5.get(r)||50)+.25*(r10.get(r)||50);
+   const flow=r.flowLite?50:(.34*(p3.get(r)||50)+.24*(p5.get(r)||50)+.22*(acc.get(r)||50)+.20*(pos.get(r)||50));
+   const d20=Number.isFinite(r.d20)?r.d20:0,dd20=Number.isFinite(r.dd20)?r.dd20:.08;
+   const zone=clamp(100-Math.abs(d20-.035)/.105*100),pull=clamp(100-Math.abs(dd20-.045)/.095*100),setup=.55*zone+.45*pull;
+   const bg=.55*(r.align??50)+.45*(r20.get(r)||50);
+   let score=.38*mom+.30*flow+.18*setup+.14*bg;
+   const over1=(Number.isFinite(r.r5)&&r.r5>.12)||(Number.isFinite(r.d20)&&r.d20>.12),over2=(Number.isFinite(r.r5)&&r.r5>.18)||(Number.isFinite(r.d20)&&r.d20>.16);
+   if(over1)score-=10;if(over2)score-=12;
+   return{...r,ShortScore:Math.max(0,Math.min(100,score)),ShortMom:mom,ShortFlow:flow,ShortSetup:setup,ShortBg:bg}
+ }).sort((a,b)=>b.ShortScore-a.ShortScore)
+}
+function v70ShortEligible(r,cfg){
+ if(!r||historicalRiskBroken(r))return false;
+ if(!Number.isFinite(r.ShortScore)||r.ShortScore<cfg.minScore)return false;
+ if(!Number.isFinite(r.r5)||r.r5<-.03||r.r5>.20)return false;
+ if(!Number.isFinite(r.r10)||r.r10<-.05)return false;
+ if(!Number.isFinite(r.r20)||r.r20<-.10)return false;
+ if(!Number.isFinite(r.d20)||r.d20<-.05||r.d20>.16)return false;
+ if(Number.isFinite(r.dd20)&&r.dd20>.14)return false;
+ if((r.align??0)<50)return false;
+ return true
+}
+function v70ShortMarket(cs,cfg){
+ const med5=Number.isFinite(cs.median5)?cs.median5:0,b=Number.isFinite(cs.breadth20)?cs.breadth20:50;
+ if(med5>.01&&b>=55)return{label:'短强',util:cfg.strongUtil};
+ if(med5<-.02||b<42)return{label:'短弱',util:cfg.weakUtil};
+ return{label:'短中',util:cfg.neutralUtil}
+}
+function simulateV70Short(data,dates,cfg,detail=true){
+ const side=cfg.costBps/20000,state={cash:cfg.capital,holdings:new Map()},curve=[],actions=[],trades=[],invested=[];
+ let peak=cfg.capital,mdd=0,intradayMdd=0,tradeGross=0,activeGross=0,tradeCount=0,activeTradeCount=0,initialBuild=true,peakSingleWeight=0;
+ const addTrade=(g)=>{tradeGross+=g;tradeCount++;if(!initialBuild){activeGross+=g;activeTradeCount++}};
+ const close=(code,h,px,reason,date,row,regime)=>{const gross=h.shares*px,exitNet=gross*(1-side),entryCost=h.entryCost??h.shares*h.entry*(1+side),pnl=exitNet-entryCost;state.cash+=exitNet;addTrade(gross);state.holdings.delete(code);trades.push({code,entryDate:h.entryDate,exitDate:date,holdDays:h.daysHeld||0,entryPx:h.entry,exitPx:px,pnl,netRet:entryCost>0?pnl/entryCost:NaN,mfe:h.entry>0&&Number.isFinite(h.maxHigh)?h.maxHigh/h.entry-1:NaN,mae:h.entry>0&&Number.isFinite(h.minLow)?h.minLow/h.entry-1:NaN,entryScore:h.entryScore,exitScore:row?.ShortScore,reason,entryRegime:h.entryRegime,exitRegime:regime});return gross};
+ for(const d of dates){
+   const cs0=cfg.csCache?.get(d)||historicalCrossSection(data,d);if(cs0.scored.length<6||cs0.prices.size<6)continue;
+   const rows=v70ShortScoreRows(cs0.scored).map((r,i)=>({...r,shortRank:i+1})),rowMap=new Map(rows.map(r=>[r.code,r])),md=v70ShortMarket(cs0,cfg);
+   let preEq=state.cash;for(const [code,h] of state.holdings){const px=cs0.prices.get(code)?.open;if(Number.isFinite(px))preEq+=h.shares*px}
+   const entries=rows.filter(r=>v70ShortEligible(r,cfg)&&Number.isFinite(cs0.prices.get(r.code)?.open)&&cs0.prices.get(r.code).open*100<=preEq*cfg.maxPct+1e-8);
+   const day=[];
+   // exits use only information available before today's open plus today's executable open price.
+   for(const [code,h] of [...state.holdings]){
+     const r=rowMap.get(code),px=cs0.prices.get(code)?.open;if(!Number.isFinite(px))continue;
+     const pnl=h.entry>0?px/h.entry-1:0,held=h.daysHeld||0,prevMfe=h.entry>0&&Number.isFinite(h.maxHigh)?h.maxHigh/h.entry-1:0;
+     const hard=historicalRiskBroken(r),stop=pnl<=cfg.stopLoss,trail=held>=cfg.minHold&&prevMfe>=cfg.trailTrigger&&pnl<=prevMfe-cfg.trailGiveback;
+     const decay=held>=cfg.minHold&&(!r||r.ShortScore<48||(Number.isFinite(r.r5)&&r.r5<-.04)||(!r?.flowLite&&Number.isFinite(r?.p3)&&r.p3<-.8));
+     const timeout=held>=cfg.maxHold;
+     if(hard||stop||trail||decay||timeout){const reason=hard?'硬风险':stop?'短线止损':trail?'移动止盈':decay?'短动量衰竭':'时间退出';const sh=h.shares;close(code,h,px,reason,d,r,md.label);day.push(`卖${code} ${sh}股（${reason}）`)}
+   }
+   // Optional replacement after minimum hold: only when a new candidate is materially stronger.
+   if(state.holdings.size>=cfg.topN&&entries.length){
+     const bestNew=entries.find(r=>!state.holdings.has(r.code));
+     if(bestNew){const held=[...state.holdings.entries()].map(([code,h])=>({code,h,r:rowMap.get(code),px:cs0.prices.get(code)?.open})).filter(x=>Number.isFinite(x.px)&&(x.h.daysHeld||0)>=cfg.minHold).sort((a,b)=>(a.r?.ShortScore??-999)-(b.r?.ShortScore??-999));const w=held[0];if(w&&bestNew.ShortScore-(w.r?.ShortScore??-999)>=cfg.swapGap){const sh=w.h.shares;close(w.code,w.h,w.px,'强信号换仓',d,w.r,md.label);day.push(`换出${w.code} ${sh}股`)}}
+   }
+   let eq=state.cash;for(const [code,h] of state.holdings){const px=cs0.prices.get(code)?.open;if(Number.isFinite(px))eq+=h.shares*px}
+   let exposure=Math.max(0,eq-state.cash),room=Math.max(0,eq*md.util-exposure),slots=Math.max(0,cfg.topN-state.holdings.size);
+   const allocN=Math.max(1,Math.min(cfg.topN,entries.length));
+   for(const r of entries){if(slots<=0||room<=1)break;if(state.holdings.has(r.code))continue;const px=cs0.prices.get(r.code)?.open;if(!Number.isFinite(px)||px<=0)continue;const target=Math.min(eq*md.util/allocN,eq*cfg.maxPct,room);let qty=Math.floor(target/px/100)*100;while(qty>=100&&qty*px*(1+side)>state.cash)qty-=100;if(qty<100)continue;const gross=qty*px;state.cash-=gross*(1+side);addTrade(gross);state.holdings.set(r.code,{shares:qty,entry:px,entryDate:d,daysHeld:0,entryCost:gross*(1+side),entryScore:r.ShortScore,entryRegime:md.label,maxHigh:px,minLow:px});room-=gross;slots--;day.push(`买${r.code} ${qty}股（S${r.ShortScore.toFixed(1)} · ${md.label}）`)}
+   if(initialBuild&&state.holdings.size)initialBuild=false;
+   for(const h of state.holdings.values())h.daysHeld=(h.daysHeld||0)+1;
+   let floor=state.cash,closeEq=state.cash,maxW=0;for(const [code,h] of state.holdings){const q=cs0.prices.get(code);if(Number.isFinite(q?.high))h.maxHigh=Math.max(h.maxHigh??h.entry,q.high);if(Number.isFinite(q?.low))h.minLow=Math.min(h.minLow??h.entry,q.low);const lp=Number.isFinite(q?.low)?q.low:q?.close,cp=q?.close;if(Number.isFinite(lp))floor+=h.shares*lp;if(Number.isFinite(cp))closeEq+=h.shares*cp}
+   peak=Math.max(peak,closeEq);if(peak>0){mdd=Math.min(mdd,closeEq/peak-1);intradayMdd=Math.min(intradayMdd,floor/peak-1)}
+   for(const [code,h] of state.holdings){const cp=cs0.prices.get(code)?.close;if(Number.isFinite(cp)&&closeEq>0)maxW=Math.max(maxW,h.shares*cp/closeEq)}peakSingleWeight=Math.max(peakSingleWeight,maxW);invested.push(closeEq>0?(closeEq-state.cash)/closeEq:0);
+   const prev=curve.length?curve.at(-1).equity:cfg.capital,dayRet=prev>0?closeEq/prev-1:0;curve.push({date:d,equity:closeEq,cash:state.cash,dayRet,n:state.holdings.size,regime:md.label,eligible:entries.length,holds:[...state.holdings.keys()]});if(detail)actions.push({date:d,acts:day.length?day.join('；'):'不交易',equity:closeEq,cash:state.cash,dayRet,regime:md.label,eligible:entries.length,holds:[...state.holdings.keys()]})
+ }
+ if(!curve.length)return null;const lastD=curve.at(-1).date,lastCS=cfg.csCache?.get(lastD)||historicalCrossSection(data,lastD),lastRows=v70ShortScoreRows(lastCS.scored),lastMap=new Map(lastRows.map(r=>[r.code,r]));let finalCash=state.cash;
+ for(const [code,h] of [...state.holdings]){const px=lastCS.prices.get(code)?.close;if(!Number.isFinite(px))continue;const gross=h.shares*px,exitNet=gross*(1-side),entryCost=h.entryCost??h.shares*h.entry*(1+side),pnl=exitNet-entryCost;finalCash+=exitNet;tradeGross+=gross;tradeCount++;trades.push({code,entryDate:h.entryDate,exitDate:lastD,holdDays:h.daysHeld||0,entryPx:h.entry,exitPx:px,pnl,netRet:entryCost>0?pnl/entryCost:NaN,mfe:h.entry>0&&Number.isFinite(h.maxHigh)?h.maxHigh/h.entry-1:NaN,mae:h.entry>0&&Number.isFinite(h.minLow)?h.minLow/h.entry-1:NaN,entryScore:h.entryScore,exitScore:lastMap.get(code)?.ShortScore,reason:'期末清算',entryRegime:h.entryRegime,exitRegime:curve.at(-1).regime})}
+ const ret=finalCash/cfg.capital-1,wins=trades.filter(t=>t.pnl>0),losses=trades.filter(t=>t.pnl<0),grossWin=wins.reduce((a,t)=>a+t.pnl,0),grossLoss=-losses.reduce((a,t)=>a+t.pnl,0),pf=grossLoss>0?grossWin/grossLoss:(grossWin>0?Infinity:NaN);
+ return{policy:'v70s',ret,finalCash,mdd,intradayMdd,curve,actions,trades,tradeCount,activeTurnover:cfg.capital>0?activeGross/cfg.capital:NaN,turnover:cfg.capital>0?tradeGross/cfg.capital:NaN,avgInvest:mean(invested),peakSingleWeight,winRate:trades.length?wins.length/trades.length:NaN,avgTrade:mean(trades.map(t=>t.netRet).filter(Number.isFinite)),medTrade:median(trades.map(t=>t.netRet).filter(Number.isFinite)),profitFactor:pf,avgHold:mean(trades.map(t=>t.holdDays).filter(Number.isFinite)),start:curve[0].date,end:curve.at(-1).date}
+}
+async function runV70ShortFull(){
+ const btn=$('runV70ShortFull');if(!btn)return;btn.disabled=true;if($('runV70ShortWindows'))$('runV70ShortWindows').disabled=true;$('shortSummary').innerHTML='';$('shortBody').innerHTML='';$('shortBar').style.width='1%';$('shortStatus').textContent='V7.0-S：正在读取历史数据并预计算截面…';
+ try{const cfg=v70ShortConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('shortBar').style.width=Math.round(i/n*10)+'%';$('shortStatus').textContent=`历史数据 ${i}/${n}：成功${ok}只`}),eligible=eligibleAccountDates(data);if(eligible.length<150)throw Error('可用历史不足150个交易日');const csCache=await precomputeAccountCrossSections(data,eligible,(i,n,ok)=>{$('shortBar').style.width=(10+Math.round(i/n*45))+'%';$('shortStatus').textContent=`预计算 ${i}/${n}：有效${ok}日`}),dates=eligible.filter(d=>csCache.has(d));const v7=simulateV70Short(data,dates,{...cfg,csCache},true),v69=simulateV68Window(data,dates,{...v69LockedConfig(),csCache},false),v681=simulateV68Window(data,dates,{...v681LockedConfig(),csCache},false);if(!v7||!v69||!v681)throw Error('未形成完整连续账户结果');$('shortBar').style.width='95%';const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;$('shortSummary').innerHTML=box(moneyY(v7.finalCash),'V7.0-S期末资产',`${v7.start}→${v7.end}`)+box(pct(v7.ret),'累计收益',`CAGR ${pct(periodCagr(v7))}`)+box(pct(v7.mdd),'收盘最大回撤',`盘中压力 ${pct(v7.intradayMdd)}`)+box(pct(v7.winRate,0),'闭环交易胜率',`单笔均值 ${pct(v7.avgTrade)} · 中位 ${pct(v7.medTrade)}`)+box(Number.isFinite(v7.profitFactor)?v7.profitFactor.toFixed(2):'∞','Profit Factor',`平均持有 ${fmt(v7.avgHold,1)}日`)+box(`${v7.activeTurnover.toFixed(2)}x`,'主动换手',`平均利用率 ${pct(v7.avgInvest,0)} · 峰值单股 ${pct(v7.peakSingleWeight,0)}`);
+ const yrs=yearlyReturnsFromCurve(v7,cfg.capital).map(x=>`<tr><td>${x.year}</td><td>${pct(x.ret)}</td><td>${moneyY(x.end)}</td></tr>`).join(''),recent=v7.actions.filter(x=>x.acts!=='不交易').slice(-30).reverse().map(x=>`<tr><td>${x.date}</td><td>${x.regime}</td><td>${x.acts}</td><td>${pct(x.dayRet)}</td><td>${moneyY(x.equity)}</td><td>${moneyY(x.cash)}</td><td>${x.holds.join(',')||'现金'}</td></tr>`).join('');
+ $('shortBody').innerHTML=`<div class="audit"><b>V7.0-S-R1 · 短线研究候选</b><div class="small">目标持有2–8日，Top3，S≥60；评分重点是5/10日相对动量、3/5日资金持续性、20日位置和中期背景。当天评分只使用开盘前历史数据，当日开盘成交、收盘估值。没有合格候选允许现金。V6.9与V6.8.1仅作为同数据对照。</div></div><div class="sectionTitle">全周期对照</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>模型</th><th>期末资产</th><th>累计</th><th>CAGR</th><th>DD</th><th>盘中DD</th><th>换手</th></tr></thead><tbody><tr><td>V7.0-S</td><td>${moneyY(v7.finalCash)}</td><td>${pct(v7.ret)}</td><td>${pct(periodCagr(v7))}</td><td>${pct(v7.mdd)}</td><td>${pct(v7.intradayMdd)}</td><td>${v7.activeTurnover.toFixed(2)}x</td></tr><tr><td>V6.9-R1</td><td>${moneyY(v69.finalCash)}</td><td>${pct(v69.ret)}</td><td>${pct(periodCagr(v69))}</td><td>${pct(v69.mdd)}</td><td>${pct(v69.intradayMdd)}</td><td>${v69.activeTurnover.toFixed(2)}x</td></tr><tr><td>V6.8.1</td><td>${moneyY(v681.finalCash)}</td><td>${pct(v681.ret)}</td><td>${pct(periodCagr(v681))}</td><td>${pct(v681.mdd)}</td><td>${pct(v681.intradayMdd)}</td><td>${v681.activeTurnover.toFixed(2)}x</td></tr></tbody></table></div><div class="sectionTitle">V7.0-S逐年</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>年份</th><th>收益</th><th>年末资产</th></tr></thead><tbody>${yrs}</tbody></table></div><div class="sectionTitle">最近30个短线动作日</div><div style="overflow:auto;max-height:520px"><table class="trendTable"><thead><tr><th>日期</th><th>短市</th><th>动作</th><th>当日</th><th>资产</th><th>现金</th><th>持仓</th></tr></thead><tbody>${recent||'<tr><td colspan="7">无动作</td></tr>'}</tbody></table></div>`;$('shortStatus').textContent=`V7.0-S全历史完成：期末${moneyY(v7.finalCash)}，累计${pct(v7.ret)}，闭环交易${v7.trades.length}笔。下一步请运行3/5/8/10/15日短线窗口测试。`;$('shortBar').style.width='100%'}catch(e){$('shortStatus').textContent='V7.0-S全历史失败：'+String(e.message||e);$('shortBar').style.width='0%'}finally{btn.disabled=false;if($('runV70ShortWindows'))$('runV70ShortWindows').disabled=false}
+}
+function v70WindowStarts(dates,L,count,seed){const max=Math.max(0,dates.length-L),rnd=seededRand(seed+L*7919),chosen=new Set(),out=[];for(let i=0;i<Math.floor(count/2);i++){const j=Math.round(i*max/Math.max(1,Math.floor(count/2)-1));chosen.add(j);out.push({i:j,kind:'等距'})}let tries=0;while(out.length<count&&tries++<5000){const j=Math.floor(rnd()*(max+1));if(chosen.has(j))continue;chosen.add(j);out.push({i:j,kind:'固定随机'})}return out.sort((a,b)=>a.i-b.i)}
+function shortWindowStats(a){const rs=a.map(x=>x.v7.ret),ex=a.map(x=>x.v7.ret-x.v69.ret);return{n:a.length,mean:mean(rs),med:median(rs),p25:quantile(rs,.25),worst:rs.length?Math.min(...rs):NaN,pos:rs.length?rs.filter(x=>x>0).length/rs.length:NaN,beat:ex.length?ex.filter(x=>x>0).length/ex.length:NaN,exMed:median(ex),dd:median(a.map(x=>x.v7.intradayMdd)),turn:median(a.map(x=>x.v7.activeTurnover)),pf:median(a.map(x=>x.v7.profitFactor).filter(Number.isFinite))}}
+async function runV70ShortWindows(){
+ const btn=$('runV70ShortWindows');if(!btn)return;btn.disabled=true;if($('runV70ShortFull'))$('runV70ShortFull').disabled=true;$('shortSummary').innerHTML='';$('shortBody').innerHTML='';$('shortBar').style.width='1%';$('shortStatus').textContent='短线窗口测试：参数与窗口选择规则已冻结，正在准备3/5/8/10/15日窗口…';
+ try{const cfg=v70ShortConfig(),data=await loadAcctResearchData((i,n)=>{$('shortBar').style.width=Math.round(i/n*8)+'%'}),eligible=eligibleAccountDates(data);if(eligible.length<180)throw Error('历史长度不足');const csCache=await precomputeAccountCrossSections(data,eligible,(i,n)=>{$('shortBar').style.width=(8+Math.round(i/n*42))+'%'}),dates=eligible.filter(d=>csCache.has(d)),pairs=[];for(const L of [3,5,8,10,15]){for(const z of v70WindowStarts(dates,L,16,7009201)){const ds=dates.slice(z.i,z.i+L);if(ds.length<L)continue;const v7=simulateV70Short(data,ds,{...cfg,csCache},false),v69=simulateV68Window(data,ds,{...v69LockedConfig(),csCache},false);if(v7&&v69)pairs.push({L,kind:z.kind,v7,v69})}}if(pairs.length<60)throw Error('有效短线窗口不足60个');const all=shortWindowStats(pairs),box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;$('shortSummary').innerHTML=box(pct(all.med),'全部窗口中位收益',`均值 ${pct(all.mean)} · P25 ${pct(all.p25)}`)+box(pct(all.pos,0),'盈利窗口比例',`最差 ${pct(all.worst)}`)+box(pct(all.beat,0),'跑赢V6.9窗口',`中位超额 ${pct(all.exMed)}`)+box(pct(all.dd),'盘中DD中位',`主动换手 ${all.turn.toFixed(2)}x`)+box(Number.isFinite(all.pf)?all.pf.toFixed(2):'—','Profit Factor中位',`${pairs.length}个预注册窗口`)+box(moneyY(80000*(1+all.med)),'中位窗口期末资产','每窗独立从8万元开始，不代表连续复利');
+ const hs=[3,5,8,10,15].map(L=>{const q=pairs.filter(x=>x.L===L),st=shortWindowStats(q),v69m=median(q.map(x=>x.v69.ret));return `<tr><td>${L}日</td><td>${q.length}</td><td>${pct(st.mean)}</td><td>${pct(st.med)}</td><td>${pct(st.p25)}</td><td>${pct(st.worst)}</td><td>${pct(st.pos,0)}</td><td>${pct(st.beat,0)}</td><td>${pct(st.exMed)}</td><td>${pct(v69m)}</td><td>${pct(st.dd)}</td><td>${st.turn.toFixed(2)}x</td></tr>`}).join(''),detail=pairs.map(x=>`<tr><td>${x.L}日</td><td>${x.kind}</td><td>${x.v7.start}</td><td>${x.v7.end}</td><td>${pct(x.v7.ret)}</td><td>${pct(x.v69.ret)}</td><td>${pct(x.v7.ret-x.v69.ret)}</td><td>${pct(x.v7.intradayMdd)}</td><td>${x.v7.activeTurnover.toFixed(2)}x</td></tr>`).join('');
+ $('shortBody').innerHTML=`<div class="audit"><b>V7.0-S-R1短线窗口研究 · 预注册口径</b><div class="small">在看结果前固定3/5/8/10/15日，每档16窗（8个全历史等距 + 8个固定种子随机），每窗独立从80,000元开始。参数不因结果临时改动。由于同一固定12只科技股和历史已被我们多次研究，这仍是开发研究，不是严格未来OOS；只有下一轮新的OOS-S与真实Forward才决定晋级。</div></div><div class="sectionTitle">分持有窗口</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>窗口</th><th>窗数</th><th>均值</th><th>中位</th><th>P25</th><th>最差</th><th>盈利</th><th>跑赢V69</th><th>中位超额</th><th>V69中位</th><th>盘中DD</th><th>换手</th></tr></thead><tbody>${hs}</tbody></table></div><div class="sectionTitle">全部短线窗口</div><div style="overflow:auto;max-height:520px"><table class="trendTable"><thead><tr><th>窗口</th><th>取样</th><th>开始</th><th>结束</th><th>V7.0-S</th><th>V6.9</th><th>超额</th><th>盘中DD</th><th>换手</th></tr></thead><tbody>${detail}</tbody></table></div>`;$('shortStatus').textContent=`短线窗口测试完成：${pairs.length}窗；全部中位${pct(all.med)}，盈利窗${pct(all.pos,0)}，跑赢V6.9 ${pct(all.beat,0)}。`;$('shortBar').style.width='100%'}catch(e){$('shortStatus').textContent='短线窗口测试失败：'+String(e.message||e);$('shortBar').style.width='0%'}finally{btn.disabled=false;if($('runV70ShortFull'))$('runV70ShortFull').disabled=false}
+}
+
 function v68LockedConfig(){
  return{capital:80000,topN:5,holdRank:9,swapGap:8,cooldown:3,winnerProfit:.05,maxPct:.35,costBps:20,entryScore:55,strongUtil:.95,neutralUtil:.90,weakUtil:.70,confirmWeakUtil:.50,policy:'v68'}
 }
@@ -1826,7 +1925,7 @@ function prep(){
  const ta=rank(tech,'main_pct'),tb=rank(tech,'amount'),tc=rank(tech,'pct60');
  FT=tech.map(r=>({...r,TP:.4*(ta.get(r)||50)+.3*(tb.get(r)||50)+.3*(tc.get(r)||50)})).sort((x,y)=>y.TP-x.TP);
 }
-function pmet(k){let c=k.map(x=>x.close);if(c.length<130)return null;let ma=n=>mean(c.slice(-n)),m20=ma(20),m30=ma(30),m60=ma(60),m120=ma(120),r60=ret(c,60);return{r5:ret(c,5),r10:ret(c,10),r20:ret(c,20),r30:ret(c,30),r60,r120:ret(c,120),d20:c.at(-1)/m20-1,d30:c.at(-1)/m30-1,d60:c.at(-1)/m60-1,d120:c.at(-1)/m120-1,dd20:1-c.at(-1)/Math.max(...c.slice(-20)),align:(c.at(-1)>m20?25:0)+(m20>m60?25:0)+(m60>m120?25:0)+(r60>0?25:0)}}
+function pmet(k){let c=k.map(x=>x.close);if(c.length<130)return null;let ma=n=>mean(c.slice(-n)),m20=ma(20),m30=ma(30),m60=ma(60),m120=ma(120),r60=ret(c,60);return{r3:ret(c,3),r5:ret(c,5),r10:ret(c,10),r20:ret(c,20),r30:ret(c,30),r60,r120:ret(c,120),d20:c.at(-1)/m20-1,d30:c.at(-1)/m30-1,d60:c.at(-1)/m60-1,d120:c.at(-1)/m120-1,dd20:1-c.at(-1)/Math.max(...c.slice(-20)),align:(c.at(-1)>m20?25:0)+(m20>m60?25:0)+(m60>m120?25:0)+(r60>0?25:0)}}
 function fmet(f){
  const tail=n=>f.slice(-n);
  const sum=n=>tail(n).reduce((a,x)=>a+(x.main_net||0),0);
@@ -2634,6 +2733,8 @@ if($('runAcctStress'))$('runAcctStress').onclick=runAccountStress;
 if($('forwardFreeze'))$('forwardFreeze').onclick=freezeForwardPlan;
 if($('forwardSettle'))$('forwardSettle').onclick=settleForwardPlans;
 if($('forwardRefresh'))$('forwardRefresh').onclick=renderForwardBook;
+if($('runV70ShortFull'))$('runV70ShortFull').onclick=runV70ShortFull;
+if($('runV70ShortWindows'))$('runV70ShortWindows').onclick=runV70ShortWindows;
 if($('runV69Full'))$('runV69Full').onclick=runV69FullHistory;
 if($('runV69OOS3'))$('runV69OOS3').onclick=runV69OOS3;
 if($('runV69NoHindsight'))$('runV69NoHindsight').onclick=runV69NoHindsightReplay;
