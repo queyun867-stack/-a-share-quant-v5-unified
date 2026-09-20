@@ -11,7 +11,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 .field select{border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#111827;width:100%;box-sizing:border-box}
 @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
 </style></head><body><main>
-<h1>A股量化研究</h1><div class="sub">V6.8.1实时模型 · Build 6.9-R1 · 归因驱动研究候选</div>
+<h1>A股量化研究</h1><div class="sub">V6.8.1实时模型 · Build 6.9-Forward.1 · V6.9-R1前瞻影子验证</div>
 <div class="tabs card"><button class="tab on" data-p="market">全市场</button><button class="tab" data-p="cand">候选池</button><button class="tab" data-p="focus">重点池</button><button class="tab" data-p="pos">持仓</button></div>
 <div class="card">
   <b>运行模式</b> <span id="modeBadge" class="pill"></span>
@@ -28,12 +28,13 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 <div class="note"><b>V6.8.1只改一个结构变量：合格候选不足5只时，不再机械按Top5平均分配目标仓位。</b> 仍保持D-Core≥55、30日主趋势、短周期风险过滤与35%单股上限；但目标风险仓位会按“当前实际可执行的高质量候选数”重新分配。目的不是降低选股门槛，而是减少V6.8因日均仅约2只合格候选而长期持有过多现金的问题。<b>实时X-Gate仍不变，先做连续账户A/B。</b></div>
 <div class="note"><b>本轮A/B纪律：</b> 一笔80,000元从最早可用历史日连续运行到最新日，中间不重置本金。V6.8.1与V6.8使用完全相同的股票质量门槛、趋势规则、交易成本和卖出纪律；唯一差异是仓位分配。V6.8.1在1/2/3/4/5只合格可执行候选时，分别按实际候选数分配目标风险仓位，同时仍受单股35%硬上限约束。这样可以直接检验“少而精时提高资金利用率”是否提高8万元最终收益，而不是靠降低门槛凑仓位。</div>
 <div class="note"><b>Build 6.8.2不改交易规则，只做收益归因审计。</b> 它把V6.8.1全历史连续账户里的每笔完整交易拆成：入场时合格候选数、市场阶段、D-Core分数段、持有天数、退出原因、净收益、MFE/MAE，以及卖出后第5/10个交易日的价格表现。<b>本轮只定位“什么动作真正创造/损失了8万元账户收益”，不再利用OOS-2结果调参；后续任何策略改动必须进入新的OOS-3。</b></div>
+<div class="note"><b>V6.9-R1已完成OOS-3冻结验收（6/6），从本Build起参数停止调优，转入前瞻影子验证。</b> 前瞻阶段每天盘前同时冻结V6.9-R1与V6.8.1两套8万元影子账户计划，盘后/次日用真实K线开盘价模拟成交并按收盘价结算；首份交易日盘前计划不可覆盖。周末、节假日或9:30后首次生成仅作演练，不计入正式样本。<b>实时X-Gate仍保持V6.8.1稳定口径，直到前瞻样本达到20/40/60个真实交易日再决定是否晋级。</b></div>
 <div class="note"><b>V6.9-R1只验证两条由归因直接支持的结构假设：</b> ① 买入时只有1/2只合格候选时，不再首日直接打到35%上限，而是先20%/25%，持有满5个交易日且浮盈≥3%、30日主趋势仍完整时再加到35%；② “确认弱势”不再因为市场标签机械砍掉主趋势仍完整的旧仓，只有账户距峰值回撤达到8%且持仓本身非核心趋势时才主动减。D-Core≥55、30日主趋势、35%硬上限、20bp摩擦都不改。<b>归因中55–60分表现最好，但本轮刻意不调D-Core分数带，避免对已看样本过拟合。</b></div>
 
 <section id="market">
 <div class="card">
 <button id="scan" class="blue">扫描全部A股</button><button id="stopScan" disabled>停止扫描</button><button id="deepAll" disabled>深扫全市场Top40</button><button id="deepTech" disabled>深扫科技Top40</button><button id="testK">测试K线源</button><button id="clear">清缓存</button>
-<p id="ms">正在启动V6.8.1实时模型 / Build 6.9-R1研究候选…</p><div class="bar"><i id="mb"></i></div>
+<p id="ms">正在启动V6.8.1实时模型 / Build 6.9-Forward前瞻影子验证…</p><div class="bar"><i id="mb"></i></div>
 </div>
 <div class="grid"><div><b id="n1">0</b><span>全市场</span></div><div><b id="n2">0</b><span>硬过滤后</span></div><div><b id="n3">0/0</b><span>全/科技候选</span></div><div><b id="n4">0</b><span>重点池</span></div></div>
 <div class="card">
@@ -84,7 +85,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="histSimBody"></div>
 </div>
 <div class="card">
-  <b>连续账户回放与交易归因（研究）</b><span class="small">V6.8.1维持30日主趋势 + 动态有效仓位；Build 6.8.2新增逐笔收益归因，用于定位真正创造/损失8万元账户收益的动作，不改变实时X-Gate。</span>
+  <b>历史研究与归因（已冻结）</b><span class="small">V6.9-R1已通过OOS-3；这些按钮保留用于审计复现，不再据此继续调参。新的晋级依据改为下方“前瞻影子验证”。</span>
   <div class="metricGrid">
     <div class="field"><label>起始日期（留空=最近20个交易日）</label><input id="acctStart" type="date"></div>
     <div class="field"><label>结束日期（留空=最新可用日）</label><input id="acctEnd" type="date"></div>
@@ -105,11 +106,19 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
     <div class="field"><label>压力测试窗口数</label><select id="acctWindows"><option value="8">8窗</option><option value="12" selected>12窗</option><option value="20">20窗</option></select></div>
   </div>
   <div class="small">确认弱势采用固定2/3规则：5日中位趋势≤-2%、上涨宽度≤42%、账户距峰值回撤≤-4%，至少2项同时触发。该阈值在本轮验收前不随结果改动。</div>
-  <div class="toolbar"><button id="runV69Full" class="blue">V6.9-R1全历史 A/B</button><button id="runV69OOS3">V6.9 OOS-3冻结验证</button><button id="runV68Full">V6.8.1全历史连续账户 A/B</button><button id="runTradeAudit">交易收益归因审计</button><button id="runAcctReplay">运行指定区间账户回放</button><button id="runAcctStress">跨时期压力测试</button><button id="runAcctBlind">V6.8.1 OOS-2盲测</button></div>
-  <div id="acctReplayStatus" class="small">交易归因已完成。先点“V6.9-R1全历史 A/B”看机制方向，再点“V6.9 OOS-3冻结验证”做新规则验收；不要再用OOS-2给V6.9背书。</div>
+  <div class="toolbar"><button id="runV69Full" class="blue">V6.9-R1全历史 A/B</button><button id="runV69OOS3">V6.9 OOS-3冻结验证</button><button id="runV69NoHindsight">V6.9 无后见5日回放</button><button id="runV68Full">V6.8.1全历史连续账户 A/B</button><button id="runTradeAudit">交易收益归因审计</button><button id="runAcctReplay">运行指定区间账户回放</button><button id="runAcctStress">跨时期压力测试</button><button id="runAcctBlind">V6.8.1 OOS-2盲测</button></div>
+  <div id="acctReplayStatus" class="small">V6.9-R1历史研究与OOS-3已完成并冻结。后续不要根据这些已看历史继续调V6.9参数；请用下方前瞻影子验证积累新的真实盘前样本。</div>
   <div class="bar"><i id="acctReplayBar"></i></div>
   <div id="acctReplaySummary" class="scoreStrip"></div>
   <div id="acctReplayBody"></div>
+</div>
+<div class="card" id="forwardCard">
+  <b>V6.9-R1 前瞻影子验证</b><span class="small">两套独立8万元影子账户：V6.9-R1候选 vs V6.8.1对照。只允许交易日9:30前的首份安全盘前计划进入正式样本；计划冻结后不可覆盖，盘后或次日按真实日K开盘价模拟成交、收盘价结算。</span>
+  <div class="toolbar"><button id="forwardFreeze" class="blue">冻结今日双模型计划</button><button id="forwardSettle">结算待结算交易日</button><button id="forwardRefresh">刷新前瞻账本</button></div>
+  <div id="forwardStatus" class="small">首次正式使用：交易日9:30前先完成“科技独立榜”盘前深扫，确认未来数据审计PASS，再冻结计划。周末/盘中生成只记研究演练，不计20/40/60日前瞻门槛。</div>
+  <div class="bar"><i id="forwardBar"></i></div>
+  <div id="forwardSummary" class="scoreStrip"></div>
+  <div id="forwardBody"></div>
 </div>
 <div class="card">
   <b>执行风险闸门 X-Gate</b>
@@ -121,7 +130,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
     <div class="field"><label>风险距离/退出参考（%）</label><input id="execStopPct" inputmode="decimal" value="8"></div>
   </div>
   <div class="toolbar"><button id="saveExecCfg" class="blue">保存执行参数</button></div>
-  <div id="execCfgStatus" class="small">默认进取档：8万元本金、单只上限35%、单笔计划损失2.00%、风险距离8%。V6.8.1研究候选仍不改实时X-Gate；本轮只验证“合格候选少时动态集中仓位”能否在不降低质量门槛的情况下提高8万元最终收益。</div>
+  <div id="execCfgStatus" class="small">默认进取档：8万元本金、单只上限35%、单笔计划损失2.00%、风险距离8%。实时X-Gate继续保持V6.8.1稳定口径；V6.9-R1只在前瞻影子账户中运行，至少完成20/40/60个正式交易日样本后才复核晋级。</div>
 </div>
 <div class="card">
   <b>Top40 深度候选</b><span id="channelStatus" class="small">当前：科技独立榜</span><div id="replayNotice" class="small"></div>
@@ -269,10 +278,10 @@ setTimeout(function(){
 </script>
 <script>
 const MODEL_VERSION='6.8.1';
-const APP_BUILD='6.9-r1-attribution-driven';
+const APP_BUILD='6.9-forward1';
 window.__A_SHARE_APP_VERSION__ = MODEL_VERSION;
 document.title=`A股量化研究 V${MODEL_VERSION} · Build ${APP_BUILD}`;
-const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v5-regime2-stable | HoldingState=v3-winner-hold | ResearchAccount=v681-dynamic-qualified-sizing | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
+const MODEL_SPEC='D=45%E+35%F+20%L | S=60%Q+28%E+12%F | F+=7factor-v1 | RWatch=v1 | P-Gate=v1 | X-Gate=v5-regime2-stable | HoldingState=v3-winner-hold | ResearchAccount=v681-dynamic-qualified-sizing | ForwardShadow=v1-v69-v681 | PremarketArchive=v2-weekend-guard | Calibration=official-live-multi-horizon';
 const MODEL_RULE_ID='2026-09-19-v6.8.1-dualcycle-cash1';
 
 const $=x=>document.getElementById(x),mean=a=>{a=a.filter(Number.isFinite);return a.length?a.reduce((s,x)=>s+x,0)/a.length:NaN},ret=(a,n)=>a.length>n?a.at(-1)/a.at(-1-n)-1:NaN,fmt=(x,d=0)=>Number.isFinite(x)?x.toFixed(d):'—',money=x=>Number.isFinite(x)?(x>0?'+':'')+(x/1e8).toFixed(1)+'亿':'—';
@@ -994,7 +1003,7 @@ function moneyY(x){return Number.isFinite(x)?Math.round(x).toLocaleString()+'元
 async function runAccountReplay(){
  const btn=$('runAcctReplay');if(!btn)return;btn.disabled=true;$('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='正在读取历史数据并构造连续账户…';
  try{const cfg=acctReplayConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('acctReplayBar').style.width=Math.round(i/n*30)+'%';$('acctReplayStatus').textContent=`历史数据 ${i}/${n}：成功${ok}只`}),eligible=eligibleAccountDates(data),dates=accountDateRange(eligible,cfg);if(dates.length<2)throw Error('指定区间可用交易日不足2日');
-   const r=simulateAccountWindow(data,dates,{...cfg,policy:'v671'},true),stable=simulateAccountWindow(data,dates,{...cfg,policy:'v67'},false),base=simulateAccountWindow(data,dates,{...cfg,policy:'v665'},false);if(!r)throw Error('账户回放未形成有效交易日');$('acctReplayBar').style.width='100%';$('acctReplaySummary').innerHTML=acctSummaryBoxes(r,cfg)+(stable?`<div class="scoreBox"><b>${pct(r.ret-stable.ret)}</b><span>相对V6.7收益差</span><div class="micro">V6.7 ${pct(stable.ret)} · V6.7.1 ${pct(r.ret)}</div></div>`:'')+(base?`<div class="scoreBox"><b>${pct(r.ret-base.ret)}</b><span>相对V6.6.5收益差</span><div class="micro">基线 ${pct(base.ret)} · 候选 ${pct(r.ret)}</div></div>`:'');
+   const r=simulateAccountWindow(data,dates,{...cfg,policy:'v671'},true),stable=simulateAccountWindow(data,dates,{...cfg,policy:'v67'},false),base=simulateAccountWindow(data,dates,v665CanonicalConfig(cfg.capital,cfg.costBps),false);if(!r)throw Error('账户回放未形成有效交易日');$('acctReplayBar').style.width='100%';$('acctReplaySummary').innerHTML=acctSummaryBoxes(r,cfg)+(stable?`<div class="scoreBox"><b>${pct(r.ret-stable.ret)}</b><span>相对V6.7收益差</span><div class="micro">V6.7 ${pct(stable.ret)} · V6.7.1 ${pct(r.ret)}</div></div>`:'')+(base?`<div class="scoreBox"><b>${pct(r.ret-base.ret)}</b><span>相对V6.6.5收益差</span><div class="micro">基线 ${pct(base.ret)} · 候选 ${pct(r.ret)}</div></div>`:'');
    const rows=r.actions.slice(-40).reverse().map(x=>`<tr><td>${x.date}</td><td>${x.policyRegime} ${x.weakBadCount?`(${x.weakBadCount}/3)`:''}</td><td>${pct(x.targetUtil,0)}</td><td>${x.acts}</td><td>${pct(x.dayRet)}</td><td>${moneyY(x.equity)}</td><td>${Math.round(x.cash).toLocaleString()}</td><td>${pct(x.maxWeight,0)}</td><td>${x.execCount}</td><td>${x.holds.join(',')}</td></tr>`).join('');
    const blocks=r.blocked.slice(-10).map(x=>`<div class="small">${x.date} · ${x.code} · ${x.reason} · 1手约${Math.round(x.lot).toLocaleString()}元</div>`).join('');
    const filters=r.capacityFiltered.slice(-10).map(x=>`<div class="small">${x.date} · ${x.code} · ${x.reason} · 1手约${Math.round(x.lot).toLocaleString()}元</div>`).join('');
@@ -1006,7 +1015,7 @@ function quantile(a,p){const b=a.filter(Number.isFinite).sort((x,y)=>x-y);if(!b.
 async function runAccountStress(){
  const btn=$('runAcctStress');if(!btn)return;btn.disabled=true;$('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='正在同窗运行V6.6.5、V6.7与V6.7.1自适应候选…';
  try{const cfg=acctReplayConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('acctReplayBar').style.width=Math.round(i/n*20)+'%'}),eligible=eligibleAccountDates(data),L=Math.max(5,cfg.windowDays),maxStart=Math.max(0,eligible.length-L),W=Math.min(cfg.windows,maxStart+1),starts=[];if(W<=0)throw Error('历史长度不足压力测试');for(let i=0;i<W;i++)starts.push(Math.round(i*maxStart/Math.max(1,W-1)));
-   const pairs=[];for(let i=0;i<starts.length;i++){const ds=eligible.slice(starts[i],starts[i]+L),base=simulateAccountWindow(data,ds,{...cfg,policy:'v665'},false),stable=simulateAccountWindow(data,ds,{...cfg,policy:'v67'},false),v671=simulateAccountWindow(data,ds,{...cfg,policy:'v671'},false);if(base&&stable&&v671)pairs.push({base,stable,v671});$('acctReplayBar').style.width=(20+Math.round((i+1)/starts.length*80))+'%';await new Promise(x=>setTimeout(x,10))}if(!pairs.length)throw Error('没有形成有效压力窗口');
+   const pairs=[];for(let i=0;i<starts.length;i++){const ds=eligible.slice(starts[i],starts[i]+L),base=simulateAccountWindow(data,ds,v665CanonicalConfig(cfg.capital,cfg.costBps),false),stable=simulateAccountWindow(data,ds,{...cfg,policy:'v67'},false),v671=simulateAccountWindow(data,ds,{...cfg,policy:'v671'},false);if(base&&stable&&v671)pairs.push({base,stable,v671});$('acctReplayBar').style.width=(20+Math.round((i+1)/starts.length*80))+'%';await new Promise(x=>setTimeout(x,10))}if(!pairs.length)throw Error('没有形成有效压力窗口');
    const rr=pairs.map(x=>x.v671.ret),sr=pairs.map(x=>x.stable.ret),br=pairs.map(x=>x.base.ret),rdd=pairs.map(x=>x.v671.intradayMdd),sdd=pairs.map(x=>x.stable.intradayMdd),bdd=pairs.map(x=>x.base.intradayMdd),rt=pairs.map(x=>x.v671.activeTurnover),st=pairs.map(x=>x.stable.activeTurnover),bt=pairs.map(x=>x.base.activeTurnover);
    const worst=[...pairs].sort((a,b)=>a.v671.ret-b.v671.ret)[0],best=[...pairs].sort((a,b)=>b.v671.ret-a.v671.ret)[0],beatBase=pairs.filter(x=>x.v671.ret>x.base.ret).length/pairs.length,beatStable=pairs.filter(x=>x.v671.ret>x.stable.ret).length/pairs.length,pos=rr.filter(x=>x>0).length/rr.length;
    const med=quantile(rr,.5),p25=quantile(rr,.25),worstRet=worst.v671.ret,ddMed=quantile(rdd,.5),turnMed=quantile(rt,.5);
@@ -1037,6 +1046,7 @@ async function runAccountStress(){
 function blindLockedConfig(){
  return{capital:80000,topN:5,holdRank:7,swapGap:5,cooldown:2,winnerProfit:.05,winnerRankBonus:2,strongUtil:.95,neutralUtil:.95,weakUtil:.78,confirmWeakUtil:.55,maxPct:.35,costBps:20,policy:'v671'}
 }
+function v665CanonicalConfig(capital=80000,costBps=20){return{capital,topN:5,holdRank:7,swapGap:5,cooldown:2,winnerProfit:.05,winnerRankBonus:2,strongUtil:.95,neutralUtil:.95,weakUtil:.78,confirmWeakUtil:.55,maxPct:.35,costBps,policy:'v665',engineId:'v665-canonical-account-v1'}}
 function blindRng(seed){let x=(seed>>>0)||1;return()=>{x=(Math.imul(x,1664525)+1013904223)>>>0;return x/4294967296}}
 function priorDevStartDates(eligible){
  const out=new Set();
@@ -1082,7 +1092,7 @@ async function runAccountBlind(){
  const btn=$('runAcctBlind');if(!btn)return;btn.disabled=true;if($('runAcctStress'))$('runAcctStress').disabled=true;if($('runV68Full'))$('runV68Full').disabled=true;
  $('acctReplayBar').style.width='2%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='V6.8.1 OOS-2参数冻结：正在构造全新历史窗口…';
  try{
-   const cfg681=v681LockedConfig(),cfg68=v68LockedConfig(),baseCfg={...blindLockedConfig(),policy:'v665'},data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*10)+'%'}),eligible=eligibleAccountDates(data);
+   const cfg681=v681LockedConfig(),cfg68=v68LockedConfig(),baseCfg=v665CanonicalConfig(),data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*10)+'%'}),eligible=eligibleAccountDates(data);
    if(eligible.length<180)throw Error('可用历史不足180个交易日，无法形成OOS-2窗口');
    const csCache=await precomputeAccountCrossSections(data,eligible,(i,n)=>{$('acctReplayBar').style.width=(10+Math.round(i/n*25))+'%'}),dates=eligible.filter(d=>csCache.has(d));
    if(dates.length<180)throw Error('有效历史截面不足180日');
@@ -1268,7 +1278,7 @@ async function runV68FullHistory(){
    const csCache=await precomputeAccountCrossSections(data,eligible,(i,n,ok)=>{$('acctReplayBar').style.width=(10+Math.round(i/n*45))+'%';$('acctReplayStatus').textContent=`预计算历史截面 ${i}/${n}：有效${ok}日`});
    const dates=eligible.filter(d=>csCache.has(d)),cc681={...cfg,csCache},cc68={...v68LockedConfig(),csCache};if(dates.length<120)throw Error('有效连续截面不足120日');
    $('acctReplayStatus').textContent='正在同数据运行V6.8.1 / V6.8 / V6.7.1 / V6.6.5与理论等权基准…';$('acctReplayBar').style.width='60%';await new Promise(r=>setTimeout(r,0));
-   const v681=simulateV68Window(data,dates,cc681,true),v68=simulateV68Window(data,dates,cc68,false),v671=simulateAccountWindow(data,dates,{...cc68,policy:'v671'},false),base=simulateAccountWindow(data,dates,{...cc68,policy:'v665'},false),bench=simulateTheoryEqualWeight(data,dates,cc68);if(!v681||!v68||!v671||!base||!bench)throw Error('连续账户未形成完整结果');
+   const v681=simulateV68Window(data,dates,cc681,true),v68=simulateV68Window(data,dates,cc68,false),v671=simulateAccountWindow(data,dates,{...cc68,policy:'v671'},false),base=simulateAccountWindow(data,dates,{...v665CanonicalConfig(cfg.capital,cfg.costBps),csCache},false),bench=simulateTheoryEqualWeight(data,dates,cc68);if(!v681||!v68||!v671||!base||!bench)throw Error('连续账户未形成完整结果');
    $('acctReplayBar').style.width='95%';
    const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
    const cal681=periodCagr(v681),cal68=periodCagr(v68),ddEff681=Math.abs(v681.mdd)>1e-9?cal681/Math.abs(v681.mdd):NaN,ddEff68=Math.abs(v68.mdd)>1e-9?cal68/Math.abs(v68.mdd):NaN;
@@ -1288,6 +1298,29 @@ async function runV68FullHistory(){
  }catch(e){$('acctReplayStatus').textContent='V6.8.1全历史A/B失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false;for(const id of ['runAcctReplay','runAcctStress','runAcctBlind','runTradeAudit'])if($(id))$(id).disabled=false}
 }
 
+
+
+async function runV69NoHindsightReplay(){
+ const btn=$('runV69NoHindsight');if(!btn)return;const peers=['runV69Full','runV69OOS3','runV68Full','runTradeAudit','runAcctReplay','runAcctStress','runAcctBlind'];btn.disabled=true;for(const id of peers)if($(id))$(id).disabled=true;
+ $('acctReplayBar').style.width='1%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='无后见回放：正在读取历史数据。日期选择规则已冻结，不看收益再挑日期…';
+ try{
+   const cfg=v69LockedConfig(),data=await loadAcctResearchData((i,n,ok)=>{$('acctReplayBar').style.width=Math.round(i/n*20)+'%';$('acctReplayStatus').textContent=`历史数据 ${i}/${n}：成功${ok}只`}),eligible=eligibleAccountDates(data);
+   if(eligible.length<160)throw Error('可用历史不足160个交易日');
+   // 测试A：机械选择数据库中最后5个已完成交易日。该规则与涨跌结果无关。
+   const recent=eligible.slice(-5);
+   // 测试B：在“最后60个交易日以前”的历史中，用固定种子690920预先抽一个连续5日窗口，避免只看最近科技强势期。
+   const maxOldStart=eligible.length-60-5;if(maxOldStart<0)throw Error('旧窗口历史长度不足');
+   const rnd=blindRng(690920),oldIdx=Math.floor(rnd()*(maxOldStart+1)),older=eligible.slice(oldIdx,oldIdx+5);
+   const needed=[...new Set([...recent,...older])],csCache=await precomputeAccountCrossSections(data,needed,(i,n,ok)=>{$('acctReplayBar').style.width=(20+Math.round(i/n*25))+'%'});
+   const sim=(ds,policy='v69')=>simulateV68Window(data,ds,{...(policy==='v69'?v69LockedConfig():v681LockedConfig()),csCache},true);
+   const a=sim(recent,'v69'),a681=sim(recent,'v681'),b=sim(older,'v69'),b681=sim(older,'v681');if(!a||!b)throw Error('未形成有效回放');
+   const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
+   $('acctReplaySummary').innerHTML=box(moneyY(a.finalCash),'最近5日 · V6.9期末资产',`${a.start}→${a.end} · ${pct(a.ret)}`)+box(pct(a.ret),'最近5日收益',`V6.8.1同窗 ${pct(a681?.ret)}`)+box(moneyY(b.finalCash),'固定种子旧5日 · V6.9期末资产',`${b.start}→${b.end} · ${pct(b.ret)}`)+box(pct(b.ret),'旧5日收益',`V6.8.1同窗 ${pct(b681?.ret)}`)+box(pct(a.mdd),'最近5日收盘DD',`盘中压力 ${pct(a.intradayMdd)}`)+box(pct(b.mdd),'旧5日收盘DD',`盘中压力 ${pct(b.intradayMdd)}`);
+   const tr=(r,label)=>r.actions.map(x=>`<tr><td>${label}</td><td>${x.date}</td><td>${x.regime}</td><td>${x.acts}</td><td>${pct(x.dayRet)}</td><td>${moneyY(x.equity)}</td><td>${moneyY(x.cash)}</td><td>${x.holds.join(',')||'现金'}</td></tr>`).join('');
+   $('acctReplayBody').innerHTML=`<div class="audit"><b>无后见测试纪律</b><div class="small">本次在看到结果前锁死两组日期选择：A=数据库最后5个已完成交易日；B=固定种子690920从“最近60个交易日以前”的历史中抽取一个连续5日窗口。每组都从80,000元重新开始，100股整手、35%单股买入硬上限、20bp往返摩擦；每个交易日只使用该日之前的K线/资金数据打分，当日开盘模拟执行、收盘估值。不会根据事后涨跌重选股票、改日期、改参数。</div></div><div class="sectionTitle">逐日建议与账户结果</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>测试</th><th>日期</th><th>阶段</th><th>开盘动作</th><th>当日</th><th>收盘资产</th><th>现金</th><th>持仓</th></tr></thead><tbody>${tr(a,'最近5日')}${tr(b,'旧5日')}</tbody></table></div><div class="small">注意：这是历史伪前瞻回放，不等于真正未来OOS。真正的严格无后见验证仍以Forward区每天9:30前冻结的官方影子账户为准。</div>`;
+   $('acctReplayStatus').textContent=`无后见5日回放完成：最近窗口 ${a.start}→${a.end}，V6.9 ${pct(a.ret)}；固定种子旧窗口 ${b.start}→${b.end}，V6.9 ${pct(b.ret)}。`;$('acctReplayBar').style.width='100%';
+ }catch(e){$('acctReplayStatus').textContent='无后见5日回放失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false;for(const id of peers)if($(id))$(id).disabled=false}
+}
 
 function auditForwardReturns(trades,data){
  const byCode=new Map(data.map(z=>[z.stock.code,z]));
@@ -1363,7 +1396,7 @@ async function runV69FullHistory(){
  const btn=$('runV69Full');if(!btn)return;const peers=['runV69OOS3','runV68Full','runTradeAudit','runAcctReplay','runAcctStress','runAcctBlind'];btn.disabled=true;for(const id of peers)if($(id))$(id).disabled=true;
  $('acctReplayBar').style.width='1%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='V6.9-R1：正在同数据运行渐进建仓候选与V6.8.1…';
  try{
-   const c69=v69LockedConfig(),c681=v681LockedConfig(),baseCfg={...blindLockedConfig(),policy:'v665'},data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*12)+'%'}),eligible=eligibleAccountDates(data);if(eligible.length<180)throw Error('可用历史不足180个交易日');
+   const c69=v69LockedConfig(),c681=v681LockedConfig(),baseCfg=v665CanonicalConfig(),data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*12)+'%'}),eligible=eligibleAccountDates(data);if(eligible.length<180)throw Error('可用历史不足180个交易日');
    const csCache=await precomputeAccountCrossSections(data,eligible,(i,n)=>{$('acctReplayBar').style.width=(12+Math.round(i/n*38))+'%'}),dates=eligible.filter(d=>csCache.has(d));if(dates.length<180)throw Error('有效历史截面不足180日');
    $('acctReplayBar').style.width='58%';await new Promise(r=>setTimeout(r,0));const v69=simulateV68Window(data,dates,{...c69,csCache},true),v681=simulateV68Window(data,dates,{...c681,csCache},false),base=simulateAccountWindow(data,dates,{...baseCfg,csCache},false);if(!v69||!v681||!base)throw Error('全历史A/B未形成有效结果');
    const cagr=r=>periodCagr(r),box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
@@ -1378,7 +1411,7 @@ async function runV69OOS3(){
  const btn=$('runV69OOS3');if(!btn)return;const peers=['runV69Full','runV68Full','runTradeAudit','runAcctReplay','runAcctStress','runAcctBlind'];btn.disabled=true;for(const id of peers)if($(id))$(id).disabled=true;
  $('acctReplayBar').style.width='1%';$('acctReplaySummary').innerHTML='';$('acctReplayBody').innerHTML='';$('acctReplayStatus').textContent='V6.9 OOS-3冻结规则：正在构造25/50/75日新起点窗口…';
  try{
-   const c69=v69LockedConfig(),c681=v681LockedConfig(),baseCfg={...blindLockedConfig(),policy:'v665'},data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*10)+'%'}),eligible=eligibleAccountDates(data);if(eligible.length<220)throw Error('可用历史不足220个交易日');
+   const c69=v69LockedConfig(),c681=v681LockedConfig(),baseCfg=v665CanonicalConfig(),data=await loadAcctResearchData((i,n)=>{$('acctReplayBar').style.width=Math.round(i/n*10)+'%'}),eligible=eligibleAccountDates(data);if(eligible.length<220)throw Error('可用历史不足220个交易日');
    const csCache=await precomputeAccountCrossSections(data,eligible,(i,n)=>{$('acctReplayBar').style.width=(10+Math.round(i/n*25))+'%'}),dates=eligible.filter(d=>csCache.has(d));if(dates.length<220)throw Error('有效历史截面不足220日');
    const specs=[];for(const L of [25,50,75])for(const z of v69Oos3Starts(dates,L,12,6903201))specs.push({L,...z});if(specs.length<30)throw Error('OOS-3未形成足够窗口');
    const pairs=[],cc69={...c69,csCache},cc681={...c681,csCache},ccBase={...baseCfg,csCache};for(let i=0;i<specs.length;i++){const q=specs[i],ds=dates.slice(q.idx,q.idx+q.L),v69=simulateV68Window(data,ds,cc69,false),v681=simulateV68Window(data,ds,cc681,false),base=simulateAccountWindow(data,ds,ccBase,false);if(v69&&v681&&base)pairs.push({...q,v69,v681,base});$('acctReplayBar').style.width=(35+Math.round((i+1)/specs.length*65))+'%';if(i%3===0)await new Promise(r=>setTimeout(r,8))}
@@ -1393,6 +1426,129 @@ async function runV69OOS3(){
    $('acctReplayBody').innerHTML=`<div class="audit"><b>V6.9 OOS-3冻结验证 · 归因后第一次新规则验收</b><div class="small">规则在看到这批结果前冻结：单候选首仓20%、双候选25%，满5日且浮盈≥3%、30日主趋势完整才加至35%；确认弱势只有账户回撤≤-8%且持仓非核心趋势才主动减。D-Core门槛、排序、30日主趋势、20bp摩擦均未改变。由于6.8.2归因已看过全历史，这仍是“历史伪样本外”，不是未来严格OOS。</div><div class="riskbar">${gateHtml}</div></div><div class="sectionTitle">分周期OOS-3</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>窗口</th><th>窗数</th><th>均值</th><th>中位</th><th>P25</th><th>最差</th><th>盈利窗</th><th>vs681中位</th><th>681中位</th><th>665中位</th><th>盘中DD</th><th>换手</th></tr></thead><tbody>${hs}</tbody></table></div><div class="sectionTitle">全部OOS-3窗口</div><div style="overflow:auto;max-height:520px"><table class="trendTable"><thead><tr><th>窗口</th><th>取样</th><th>开始</th><th>结束</th><th>V6.6.5</th><th>V6.8.1</th><th>V6.9</th><th>vs681</th><th>盘中DD</th><th>换手</th></tr></thead><tbody>${detail}</tbody></table></div>`;
    $('acctReplayStatus').textContent=`V6.9 OOS-3完成：${pairs.length}个冻结窗口，中位${pct(a.med)}，相对V6.8.1中位超额${pct(medEx)}，门槛${passN}/6。`;$('acctReplayBar').style.width='100%';
  }catch(e){$('acctReplayStatus').textContent='V6.9 OOS-3失败：'+String(e.message||e);$('acctReplayBar').style.width='0%'}finally{btn.disabled=false;for(const id of peers)if($(id))$(id).disabled=false}
+}
+
+
+const FORWARD_KEY='v69ForwardShadowV1';
+const FORWARD_ENGINE='forward-shadow-v1-open-fill-close-mark';
+function forwardBlankModel(){return{cash:80000,holdings:{},peak:80000,mdd:0,tradeGross:0,tradeCount:0,curve:[],startedAt:null}}
+function loadForwardBook(){
+ try{
+   const x=JSON.parse(localStorage.getItem(FORWARD_KEY)||'null');
+   if(x&&x.engine===FORWARD_ENGINE&&x.models?.v69&&x.models?.v681&&Array.isArray(x.days))return x
+ }catch{}
+ return{engine:FORWARD_ENGINE,createdAt:Date.now(),capital:80000,models:{v69:forwardBlankModel(),v681:forwardBlankModel()},days:[]}
+}
+function saveForwardBook(x){try{localStorage.setItem(FORWARD_KEY,JSON.stringify(x))}catch(e){throw Error('前瞻账本保存失败：'+String(e.message||e))}}
+function fwdPrice(r){const a=[r?.currentPrice,r?.price,r?.close];for(const x of a)if(Number.isFinite(+x)&&+x>0)return +x;return NaN}
+function forwardNormalizeRow(r){return{...r,DCore:Number.isFinite(r?.DCore)?r.DCore:r?.D}}
+function forwardRows(){
+ let base=[];const t=shNow();
+ const official=todayPremarketRun('tech');
+ if(isPremarketMode()&&official?.candidates?.length)base=official.candidates;
+ else if(CT.length)base=CT;
+ else if(CA.length)base=CA.filter(isTech);
+ const rows=[...new Map(base.filter(timingSafeForPremarket).map(x=>[x.code,forwardNormalizeRow(replayRun?x:attachR(x))])).values()]
+   .filter(x=>Number.isFinite(x.DCore)&&Number.isFinite(fwdPrice(x))).sort((a,b)=>b.DCore-a.DCore);
+ return rows
+}
+function forwardMarketCS(rows){
+ const r20=rows.map(x=>x.r20).filter(Number.isFinite),r5=rows.map(x=>x.r5).filter(Number.isFinite),med20=median(r20),med5=median(r5),breadth20=r20.length?r20.filter(x=>x>0).length/r20.length*100:50;
+ const regimeScore=Math.round(clamp(.50*norm(med20,-.08,.10)+.20*norm(med5,-.04,.05)+.30*breadth20));
+ return{scored:rows,median20:med20,median5:med5,breadth20,regimeScore,regime:regimeScore>=62?'强势':regimeScore<=42?'弱势':'中性'}
+}
+function forwardModelEquity(ms,rowMap){let eq=ms.cash;for(const [code,h] of Object.entries(ms.holdings||{})){const px=fwdPrice(rowMap.get(code))||h.lastClose||h.entry;if(Number.isFinite(px))eq+=(+h.shares||0)*px}return eq}
+function forwardRowSnapshot(r){return{code:r.code,name:r.name||r.code,D:+r.DCore,E:r.E,F:r.F,L:r.L,C:r.C,r5:r.r5,r10:r.r10,r20:r.r20,r30:r.r30,d20:r.d20,d30:r.d30,d60:r.d60,d120:r.d120,dd20:r.dd20,align:r.align,sum1:r.sum1,sum3:r.sum3,sum5:r.sum5,sum10:r.sum10,pos10:r.pos10,flowSignal:r.flowSignal,flowLite:!!r.flowLite,kDate:r.kDate||'',flowDate:r.flowDate||'',refPrice:fwdPrice(r)}}
+function forwardPlanForModel(ms,rows,key){
+ const cfg=key==='v69'?v69LockedConfig():v681LockedConfig(),side=cfg.costBps/20000,rowMap=new Map(rows.map(r=>[r.code,r])),cs=forwardMarketCS(rows),eq0=forwardModelEquity(ms,rowMap),accountDD=ms.peak>0?eq0/ms.peak-1:0,md=v68MarketDecision(cs,cfg,accountDD),ranked=rows.map((r,i)=>({...r,rank:i+1}));
+ const rmap=new Map(ranked.map(r=>[r.code,r])),maxValue=eq0*cfg.maxPct,entries=ranked.filter(r=>v68EntryEligible(r)&&fwdPrice(r)*100<=maxValue+1e-8),actions=[],simHold=JSON.parse(JSON.stringify(ms.holdings||{}));let simCash=ms.cash;
+ const sell=(code,reason)=>{const h=simHold[code];if(!h)return;const px=fwdPrice(rmap.get(code))||h.lastClose||h.entry;if(!Number.isFinite(px))return;actions.push({type:'SELL',code,qty:h.shares,reason,refPx:px});simCash+=h.shares*px*(1-side);delete simHold[code]};
+ // Core exits use only information frozen before the session.
+ for(const [code,h] of Object.entries({...simHold})){
+   const r=rmap.get(code),px=fwdPrice(r)||h.lastClose||h.entry,pnl=Number.isFinite(px)&&h.entry>0?px/h.entry-1:0,hard=historicalRiskBroken(r),core=v68CoreIntact(r),cool=(h.daysHeld||0)<cfg.cooldown,winner=pnl>=cfg.winnerProfit&&core&&!hard;
+   if(hard||(!core&&!cool&&!winner))sell(code,hard?'硬风险':'30日主趋势破坏')
+ }
+ let exposure=0;for(const [code,h] of Object.entries(simHold)){const px=fwdPrice(rmap.get(code))||h.lastClose||h.entry;if(Number.isFinite(px))exposure+=h.shares*px}
+ const targetExposure=eq0*md.util,trimAllowed=md.confirmed&&exposure>targetExposure+1&&(key!=='v69'||accountDD<=(cfg.deepWeakDD??-.08));
+ if(trimAllowed){
+   const held=Object.entries(simHold).map(([code,h])=>{const r=rmap.get(code),px=fwdPrice(r)||h.lastClose||h.entry,pnl=Number.isFinite(px)&&h.entry>0?px/h.entry-1:0;return{code,h,r,px,pnl,core:v68CoreIntact(r),winner:pnl>=cfg.winnerProfit&&v68CoreIntact(r),score:r?.DCore??-999}}).filter(x=>Number.isFinite(x.px)).sort((a,b)=>(a.winner-b.winner)||(a.core-b.core)||(a.score-b.score));
+   for(const x of held){if(exposure<=targetExposure+1)break;if(x.winner)continue;if(key==='v69'&&x.core)continue;const gross=x.h.shares*x.px;sell(x.code,'确认弱势减仓');exposure-=gross}
+ }
+ let eq=simCash;for(const [code,h] of Object.entries(simHold)){const px=fwdPrice(rmap.get(code))||h.lastClose||h.entry;if(Number.isFinite(px))eq+=h.shares*px}
+ // V6.9 confirmation add.
+ if(key==='v69'&&!md.confirmed){
+   let expNow=eq-simCash,room=Math.max(0,eq*md.util-expNow);
+   for(const [code,h] of Object.entries(simHold)){
+     if(room<=1)break;const r=rmap.get(code),px=fwdPrice(r)||h.lastClose||h.entry,pnl=Number.isFinite(px)&&h.entry>0?px/h.entry-1:NaN,core=v68CoreIntact(r),hard=historicalRiskBroken(r);
+     if(h.pyramided||!(h.entryEligible<=2)||(h.daysHeld||0)<cfg.pyramidAfter||!core||hard||!(pnl>=cfg.pyramidPnl))continue;
+     const cur=h.shares*px,desired=Math.max(0,eq*cfg.maxPct-cur),grossCap=Math.min(desired,room,simCash/(1+side));let qty=Math.floor(grossCap/px/100)*100;
+     while(qty>=100&&(cur+qty*px)>eq*cfg.maxPct+1e-8)qty-=100;while(qty>=100&&qty*px*(1+side)>simCash)qty-=100;if(qty<100)continue;
+     const gross=qty*px;actions.push({type:'ADD',code,qty,reason:`满${cfg.pyramidAfter}日且浮盈${pct(pnl)}，主趋势完整`,refPx:px});simCash-=gross*(1+side);h.shares+=qty;h.pyramided=true;room-=gross
+   }
+ }
+ // Fill open slots from eligible 30D-trend candidates.
+ eq=simCash;for(const [code,h] of Object.entries(simHold)){const px=fwdPrice(rmap.get(code))||h.lastClose||h.entry;if(Number.isFinite(px))eq+=h.shares*px}
+ let currentExposure=eq-simCash,room=Math.max(0,eq*md.util-currentExposure),slots=Math.max(0,cfg.topN-Object.keys(simHold).length);
+ for(const r of entries){
+   if(slots<=0||room<=0)break;if(simHold[r.code])continue;const px=fwdPrice(r);if(!Number.isFinite(px)||px<=0)continue;
+   const allocNames=cfg.dynamicConcentration?Math.max(1,Math.min(cfg.topN,new Set([...Object.keys(simHold),...entries.map(x=>x.code)]).size)):cfg.topN;
+   let perTarget=eq*md.util/allocNames,stageCap=cfg.maxPct;if(key==='v69'){stageCap=entries.length<=1?cfg.singleInitialPct:entries.length===2?cfg.dualInitialPct:cfg.maxPct;perTarget=Math.min(perTarget,eq*stageCap)}
+   const target=Math.min(perTarget,eq*cfg.maxPct,room);let qty=Math.floor(target/px/100)*100;while(qty>=100&&qty*px*(1+side)>simCash)qty-=100;while(qty>=100&&qty*px>eq*cfg.maxPct)qty-=100;if(qty<100)continue;
+   const gross=qty*px;actions.push({type:'BUY',code:r.code,qty,reason:`D${r.DCore.toFixed(1)} · 30日主趋势 · ${md.label}${key==='v69'&&entries.length<=2?' · 分段首仓':''}`,refPx:px});simCash-=gross*(1+side);simHold[r.code]={shares:qty,entry:px,daysHeld:0,entryEligible:entries.length,pyramided:false,lastClose:px};room-=gross;slots--
+ }
+ return{model:key,modelLabel:key==='v69'?'V6.9-R1':'V6.8.1',regime:md.label,regimeScore:cs.regimeScore,targetUtil:md.util,accountDD,equityRef:eq0,cashRef:ms.cash,eligible:entries.map(x=>({code:x.code,D:x.DCore,refPx:fwdPrice(x)})),actions,holdsBefore:Object.keys(ms.holdings||{}),holdsAfter:Object.keys(simHold),capturedRows:ranked.slice(0,20).map(forwardRowSnapshot)}
+}
+function forwardOfficialKind(){const t=shNow();return !isResearchOnlyDate()&&t.hhmm<930&&isPremarketMode()?'official':'rehearsal'}
+function renderForwardBook(){
+ if(!$('forwardSummary'))return;const b=loadForwardBook(),official=b.days.filter(x=>x.kind==='official'),settled=official.filter(x=>x.settledAt),m69=b.models.v69,m681=b.models.v681;
+ const eq69=m69.curve?.at(-1)?.equity??b.capital,eq681=m681.curve?.at(-1)?.equity??b.capital,r69=eq69/b.capital-1,r681=eq681/b.capital-1;
+ const box=(v,l,sub='')=>`<div class="scoreBox"><b>${v}</b><span>${l}</span>${sub?`<div class="micro">${sub}</div>`:''}</div>`;
+ $('forwardSummary').innerHTML=box(settled.length,'正式已结算日',`20/40/60日门槛 · 已冻结${official.length}日`)+box(moneyY(eq69),'V6.9影子资产',`累计 ${pct(r69)} · DD ${pct(m69.mdd||0)}`)+box(moneyY(eq681),'V6.8.1对照资产',`累计 ${pct(r681)} · DD ${pct(m681.mdd||0)}`)+box(pct(r69-r681),'V6.9相对超额',`同日起始8万元 · 不重置本金`)+box(`${m69.tradeCount||0}/${m681.tradeCount||0}`,'成交笔数 V69/V681',`换手 ${((m69.tradeGross||0)/b.capital).toFixed(2)}x / ${((m681.tradeGross||0)/b.capital).toFixed(2)}x`)+box(FORWARD_ENGINE,'前瞻引擎','首份官方计划不可覆盖');
+ const latest=b.days.at(-1);let latestHtml='<div class="small">尚未冻结任何前瞻计划。</div>';
+ if(latest){const p=(k)=>latest.plans?.[k],acts=(q)=>(q?.actions||[]).map(a=>`${a.type==='SELL'?'卖':a.type==='ADD'?'加':'买'}${a.code} ${a.qty}股（${a.reason}）`).join('；')||'不交易';latestHtml=`<div class="audit"><b>最近冻结：${latest.tradeDate} · ${latest.kind==='official'?'正式盘前':'研究演练'} · ${formatClock(latest.capturedAt)}</b><div class="small">源数据截止 ${latest.sourceDate||'—'}；V6.9：${p('v69')?.regime||'—'} / 目标利用率${pct(p('v69')?.targetUtil,0)} / 合格${p('v69')?.eligible?.length||0}只；V6.8.1：${p('v681')?.regime||'—'} / 合格${p('v681')?.eligible?.length||0}只。</div><div class="sectionTitle">V6.9-R1计划</div><div class="small">${acts(p('v69'))}</div><div class="sectionTitle">V6.8.1对照计划</div><div class="small">${acts(p('v681'))}</div></div>`}
+ const rows=official.slice(-24).reverse().map(d=>{const s=d.settlement||{},a=s.v69,bx=s.v681;return `<tr><td>${d.tradeDate}</td><td>${d.settledAt?'已结算':'待结算'}</td><td>${d.plans?.v69?.actions?.length||0}</td><td>${a?moneyY(a.equity):'—'}</td><td>${a?pct(a.dayRet):'—'}</td><td>${bx?moneyY(bx.equity):'—'}</td><td>${a&&bx?pct(a.equity/bx.equity-1):'—'}</td><td>${d.sourceDate||'—'}</td></tr>`}).join('');
+ $('forwardBody').innerHTML=`${latestHtml}<div class="audit"><b>前瞻纪律</b><div class="small">正式样本只接受交易日9:30前第一份安全盘前计划。冻结后不因盘中走势重算；盘后按该交易日真实开盘价执行计划、收盘价估值，买卖各计10bp摩擦（往返20bp）。V6.9与V6.8.1各自维护独立8万元影子账户，中途不重置。周末/盘中演练永不进入正式统计。历史页面中的“V6.6.5基线”从本Build起统一使用 <b>v665-canonical-account-v1</b> 口径，避免同一版本因不同holdRank/swapGap参数出现两个基线结果。</div></div><div class="sectionTitle">最近正式样本</div><div style="overflow:auto"><table class="trendTable"><thead><tr><th>日期</th><th>状态</th><th>V69动作</th><th>V69资产</th><th>V69当日</th><th>V681资产</th><th>资产差</th><th>源截止</th></tr></thead><tbody>${rows||'<tr><td colspan="8">暂无正式前瞻样本</td></tr>'}</tbody></table></div>`;
+ const pending=official.filter(x=>!x.settledAt).length;$('forwardStatus').textContent=`前瞻账本：正式冻结${official.length}日 / 已结算${settled.length}日 / 待结算${pending}日。V6.9参数已冻结，不根据前瞻结果中途调参。`;$('forwardBar').style.width=official.length?Math.min(100,official.length/60*100)+'%':'0%'
+}
+function freezeForwardPlan(){
+ try{
+   const rows=forwardRows();if(rows.length<6)throw Error('安全盘前深扫候选不足6只。请先在“盘前冻结”模式完成科技Top40深扫并确认审计PASS。');
+   const audit=premarketAudit(rows);if(isPremarketMode()&&!audit.pass)throw Error(`未来数据审计未通过：疑似污染${audit.futureLeak}项`);
+   const b=loadForwardBook(),t=shNow(),kind=forwardOfficialKind();
+   if(kind==='official'){
+     const pending=b.days.find(x=>x.kind==='official'&&!x.settledAt&&x.tradeDate<t.date);if(pending)throw Error(`请先结算 ${pending.tradeDate} 的影子账户，再冻结新的正式计划。`);
+     const old=b.days.find(x=>x.kind==='official'&&x.tradeDate===t.date);if(old){renderForwardBook();alert('今天的正式盘前计划已经冻结，禁止覆盖。');return}
+   }
+   const plans={v69:forwardPlanForModel(b.models.v69,rows,'v69'),v681:forwardPlanForModel(b.models.v681,rows,'v681')},sourceDate=rows.map(x=>x.kDate||x.flowDate).filter(Boolean).sort().at(-1)||'';
+   const rec={tradeDate:t.date,capturedAt:Date.now(),kind,sourceDate,modelRule:'V6.9-R1-frozen-after-OOS3',build:APP_BUILD,plans};
+   if(kind==='official')b.days.push(rec);else{b.days=b.days.filter(x=>!(x.kind==='rehearsal'&&x.tradeDate===t.date));b.days.push(rec)}
+   b.days.sort((a,c)=>String(a.tradeDate).localeCompare(String(c.tradeDate))||a.capturedAt-c.capturedAt);saveForwardBook(b);renderForwardBook();
+   alert(kind==='official'?'今日V6.9/V6.8.1双模型正式盘前计划已冻结，不可覆盖。':'当前不是交易日9:30前窗口：已保存研究演练，但不会进入正式前瞻统计。')
+ }catch(e){if($('forwardStatus'))$('forwardStatus').textContent='冻结失败：'+String(e.message||e)}
+}
+async function forwardDailyQuotes(codes,date){
+ const out=new Map();let i=0;for(const code of [...new Set(codes)]){try{const stock=seed.find(x=>x.code===code)||{code,name:code,Q:null},z=await getHistSimData(stock),q=z.k.find(x=>String(x.date).slice(0,10)===date);if(q&&Number.isFinite(q.open)&&Number.isFinite(q.close))out.set(code,q)}catch{}i++;if($('forwardBar'))$('forwardBar').style.width=Math.round(i/Math.max(1,codes.length)*80)+'%'}return out
+}
+function settleForwardModel(ms,plan,quotes,date){
+ const side=.001,prevEq=ms.curve?.at(-1)?.equity??80000,holdings=ms.holdings||{},acts=[],planned=plan?.actions||[];
+ const openEq=()=>{let e=ms.cash;for(const [code,h] of Object.entries(holdings)){const q=quotes.get(code),px=q?.open??h.lastClose??h.entry;if(Number.isFinite(px))e+=h.shares*px}return e};
+ for(const a of planned.filter(x=>x.type==='SELL')){const h=holdings[a.code],q=quotes.get(a.code);if(!h||!q)continue;const qty=Math.min(h.shares,a.qty||h.shares),gross=qty*q.open;ms.cash+=gross*(1-side);ms.tradeGross+=gross;ms.tradeCount++;h.shares-=qty;acts.push(`卖${a.code} ${qty}股@${q.open.toFixed(2)}`);if(h.shares<=0)delete holdings[a.code]}
+ for(const a of planned.filter(x=>x.type!=='SELL')){const q=quotes.get(a.code);if(!q)continue;const eq=openEq(),cur=(holdings[a.code]?.shares||0)*q.open,cap=Math.max(0,eq*.35-cur);let qty=Math.min(a.qty,Math.floor(cap/q.open/100)*100,Math.floor((ms.cash/(1+side))/q.open/100)*100);if(qty<100)continue;const gross=qty*q.open;ms.cash-=gross*(1+side);ms.tradeGross+=gross;ms.tradeCount++;const h=holdings[a.code];if(h){const old=h.shares,tot=old+qty;h.entry=(old*h.entry+gross)/tot;h.shares=tot;h.pyramided=h.pyramided||a.type==='ADD';h.entryCost=(h.entryCost||old*h.entry*(1+side))+gross*(1+side)}else holdings[a.code]={shares:qty,entry:q.open,entryDate:date,daysHeld:0,entryEligible:plan.eligible?.length||0,pyramided:false,lastClose:q.open,entryCost:gross*(1+side)};acts.push(`${a.type==='ADD'?'加':'买'}${a.code} ${qty}股@${q.open.toFixed(2)}`)}
+ let equity=ms.cash;for(const [code,h] of Object.entries(holdings)){const q=quotes.get(code);if(q?.close){h.lastClose=q.close;equity+=h.shares*q.close}else equity+=h.shares*(h.lastClose||h.entry);h.daysHeld=(h.daysHeld||0)+1}
+ ms.peak=Math.max(ms.peak||80000,equity);ms.mdd=Math.min(ms.mdd||0,ms.peak>0?equity/ms.peak-1:0);ms.curve=(ms.curve||[]);ms.curve.push({date,equity,cash:ms.cash,dayRet:prevEq>0?equity/prevEq-1:0,actions:acts});if(!ms.startedAt)ms.startedAt=date;return{equity,cash:ms.cash,dayRet:prevEq>0?equity/prevEq-1:0,actions:acts}
+}
+async function settleForwardPlans(){
+ const b=loadForwardBook(),t=shNow(),canToday=t.hhmm>=1505&&!isResearchOnlyDate(),pending=b.days.filter(x=>x.kind==='official'&&!x.settledAt&&(x.tradeDate<t.date||(x.tradeDate===t.date&&canToday))).sort((a,c)=>String(a.tradeDate).localeCompare(String(c.tradeDate)));
+ if(!pending.length){renderForwardBook();if($('forwardStatus'))$('forwardStatus').textContent='没有可结算的正式计划。当天计划需北京时间15:05后结算；也可次日盘前结算。';return}
+ try{
+   $('forwardStatus').textContent=`正在结算 ${pending.length} 个正式交易日…`;
+   for(let i=0;i<pending.length;i++){
+     const d=pending[i],codes=[];for(const k of ['v69','v681']){codes.push(...Object.keys(b.models[k].holdings||{}));codes.push(...(d.plans?.[k]?.actions||[]).map(x=>x.code))}
+     const qs=await forwardDailyQuotes(codes,d.tradeDate);if(!qs.size)throw Error(`${d.tradeDate} 尚未取得真实日K，暂不能结算`);
+     const s69=settleForwardModel(b.models.v69,d.plans.v69,qs,d.tradeDate),s681=settleForwardModel(b.models.v681,d.plans.v681,qs,d.tradeDate);d.settlement={v69:s69,v681:s681};d.settledAt=Date.now();saveForwardBook(b);if($('forwardBar'))$('forwardBar').style.width=Math.round((i+1)/pending.length*100)+'%';await new Promise(r=>setTimeout(r,30))
+   }
+   renderForwardBook()
+ }catch(e){if($('forwardStatus'))$('forwardStatus').textContent='结算失败：'+String(e.message||e)}
 }
 
 function versionGuardInfo(){
@@ -1670,7 +1826,7 @@ function prep(){
  const ta=rank(tech,'main_pct'),tb=rank(tech,'amount'),tc=rank(tech,'pct60');
  FT=tech.map(r=>({...r,TP:.4*(ta.get(r)||50)+.3*(tb.get(r)||50)+.3*(tc.get(r)||50)})).sort((x,y)=>y.TP-x.TP);
 }
-function pmet(k){let c=k.map(x=>x.close);if(c.length<130)return null;let ma=n=>mean(c.slice(-n)),m20=ma(20),m60=ma(60),m120=ma(120),r60=ret(c,60);return{r20:ret(c,20),r60,r120:ret(c,120),d20:c.at(-1)/m20-1,d60:c.at(-1)/m60-1,d120:c.at(-1)/m120-1,dd20:1-c.at(-1)/Math.max(...c.slice(-20)),align:(c.at(-1)>m20?25:0)+(m20>m60?25:0)+(m60>m120?25:0)+(r60>0?25:0)}}
+function pmet(k){let c=k.map(x=>x.close);if(c.length<130)return null;let ma=n=>mean(c.slice(-n)),m20=ma(20),m30=ma(30),m60=ma(60),m120=ma(120),r60=ret(c,60);return{r5:ret(c,5),r10:ret(c,10),r20:ret(c,20),r30:ret(c,30),r60,r120:ret(c,120),d20:c.at(-1)/m20-1,d30:c.at(-1)/m30-1,d60:c.at(-1)/m60-1,d120:c.at(-1)/m120-1,dd20:1-c.at(-1)/Math.max(...c.slice(-20)),align:(c.at(-1)>m20?25:0)+(m20>m60?25:0)+(m60>m120?25:0)+(r60>0?25:0)}}
 function fmet(f){
  const tail=n=>f.slice(-n);
  const sum=n=>tail(n).reduce((a,x)=>a+(x.main_net||0),0);
@@ -2475,8 +2631,12 @@ if($('runReplayLab'))$('runReplayLab').onclick=()=>renderReplayLab();
 if($('runHistSim'))$('runHistSim').onclick=runHistoricalSimulation;
 if($('runAcctReplay'))$('runAcctReplay').onclick=runAccountReplay;
 if($('runAcctStress'))$('runAcctStress').onclick=runAccountStress;
+if($('forwardFreeze'))$('forwardFreeze').onclick=freezeForwardPlan;
+if($('forwardSettle'))$('forwardSettle').onclick=settleForwardPlans;
+if($('forwardRefresh'))$('forwardRefresh').onclick=renderForwardBook;
 if($('runV69Full'))$('runV69Full').onclick=runV69FullHistory;
 if($('runV69OOS3'))$('runV69OOS3').onclick=runV69OOS3;
+if($('runV69NoHindsight'))$('runV69NoHindsight').onclick=runV69NoHindsightReplay;
 if($('runV68Full'))$('runV68Full').onclick=runV68FullHistory;
 if($('runTradeAudit'))$('runTradeAudit').onclick=runTradeAttributionAudit;
 if($('runAcctBlind'))$('runAcctBlind').onclick=runAccountBlind;
@@ -2987,6 +3147,7 @@ if($('clear'))$('clear').onclick=()=>{M=[];F=[];FT=[];CA=[];CT=[];localStorage.r
 if($('reset'))$('reset').onclick=()=>{W=seed.map(x=>({...x}));save();render()};
 load();
 renderReplayLab();
+renderForwardBook();
 let __lastAutoMode=modeKey();
 setInterval(()=>{
   if(modePref!=='auto')return;
