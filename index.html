@@ -1,6 +1,6 @@
 <!doctype html><html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>A股量化研究 V8.0-S Walk-Forward</title>
+<title>A股量化执行台 V9.0-M 全市场回放</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#f5f7fb;color:#111827;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}
 main{max-width:860px;margin:auto;padding:18px 12px 70px}.card,.note{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:14px;margin:12px 0}.note{background:#eff6ff;color:#1e40af;line-height:1.6}
@@ -10,10 +10,21 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 .stock{display:flex;justify-content:space-between;gap:10px;padding:11px 0;border-top:1px solid #eee}.name{font-size:16px;font-weight:850}.meta{font-size:11px;color:#6b7280}.tag{font-size:10px;background:#f3f4f6;border-radius:999px;padding:4px 7px}.in{background:#ecfdf5;color:#047857}.out{background:#fef2f2;color:#b91c1c}.lite{background:#fef3c7;color:#92400e}.watch{background:#eff6ff;color:#1d4ed8}.confirm{background:#dcfce7;color:#166534}.right{text-align:right;min-width:82px}.score{font-size:21px;font-weight:900}.qlite{background:#f5f3ff;color:#6d28d9}.sector{background:#eef2ff;color:#4338ca}.qbtn{background:#ede9fe;color:#6d28d9}.mini{padding:7px 9px;border-radius:999px;font-size:11px}.toolbar{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.filter.on{background:#111827!important;color:#fff!important}.field{display:grid;gap:5px;margin:9px 0}.field label{font-size:11px;color:#64748b}.field input{border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#111827;width:100%;box-sizing:border-box}.hstate{font-weight:900}.h3{background:#ecfdf5;color:#047857}.h2{background:#eff6ff;color:#1d4ed8}.h1{background:#fff7ed;color:#b45309}.hexit{background:#fef2f2;color:#b91c1c}.modal{position:fixed;inset:0;background:rgba(15,23,42,.42);display:flex;align-items:flex-end;justify-content:center;padding:12px;z-index:99}.sheet{width:min(760px,100%);max-height:86vh;overflow:auto;background:#fff;border-radius:22px 22px 16px 16px;padding:16px}.sheet h3{margin:0 0 8px}.metricGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.audit{margin-top:10px;padding:10px;border-radius:12px;background:#f8fafc}.riskbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.risk{font-size:10px;border-radius:999px;padding:4px 7px;background:#fff7ed;color:#b45309}.risk.red{background:#fef2f2;color:#b91c1c}.risk.green{background:#ecfdf5;color:#047857}.source{font-size:10px;color:#64748b}.sectionTitle{font-size:13px;font-weight:850;margin:14px 0 8px}.scoreStrip{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.scoreBox{background:#f8fafc;border-radius:12px;padding:10px;text-align:center}.scoreBox b{display:block;font-size:20px}.scoreBox span{font-size:10px;color:#64748b}.trendTable{width:100%;border-collapse:collapse;font-size:10px;margin-top:5px}.trendTable th,.trendTable td{padding:6px 4px;border-bottom:1px solid #eef2f7;text-align:right;white-space:nowrap}.trendTable th:first-child,.trendTable td:first-child{text-align:left}.wcGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.wcItem{background:#f8fafc;border-radius:12px;padding:9px}.wcItem b{display:block;font-size:15px}.upbad{color:#b91c1c}.upgood{color:#047857}.neutral{color:#64748b}.valuationGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.valuationGrid .metric b{font-size:17px}.micro{font-size:9px;color:#64748b}.moduleCompleteness{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}.moduleCompleteness div{background:#f8fafc;border-radius:10px;padding:7px;text-align:center}.moduleCompleteness b{display:block;font-size:14px}.profitNote{margin-top:8px;padding:9px;border-radius:12px;background:#fff7ed}.profitNote.good{background:#ecfdf5}.profitNote.bad{background:#fef2f2}.pill{font-size:10px;border-radius:999px;padding:4px 7px;background:#f3f4f6}.pill.red{background:#fef2f2;color:#b91c1c}.pill.green{background:#ecfdf5;color:#047857}.pill.orange{background:#fff7ed;color:#b45309}.metric{background:#f8fafc;border-radius:12px;padding:10px}.metric b{font-size:18px;display:block}.modalActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.ok{color:#047857!important}.bad{color:#b91c1c!important}.warn{color:#b45309!important}[hidden]{display:none!important}
 .field select{border:1px solid #dbe2ea;border-radius:12px;padding:11px 12px;font-size:15px;background:#fff;color:#111827;width:100%;box-sizing:border-box}
 @media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
+
+.v9Hero{background:linear-gradient(180deg,#ffffff,#f8fafc)}
+.v9HeroGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.v9HeroGrid>div{background:#f8fafc;border:1px solid #edf0f4;border-radius:14px;padding:12px}.v9HeroGrid b{display:block;font-size:14px;margin-bottom:5px}.v9HeroGrid span{font-size:11px;color:#64748b;line-height:1.55}
+.v9Nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;position:sticky;top:0;z-index:20;padding:8px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px)}.v9Nav button{padding:10px 6px}.v9Nav button.on{background:#111827;color:#fff}
+.v9PrimaryNote{background:#f0fdf4!important;color:#166534!important;border-color:#bbf7d0!important}
+.v9Hidden{display:none!important}.v9SectionTitle{font-size:16px;font-weight:800;margin:16px 2px 8px}.v90Reason{font-size:11px;color:#64748b;line-height:1.5}.v90Pick{background:#f8fafc;border-radius:12px;padding:9px;margin:6px 0}.v90Pick b{font-size:13px}.v90Warn{background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:12px;padding:10px;font-size:11px;line-height:1.55}.v90Good{color:#047857}.v90Bad{color:#b91c1c}
+@media(max-width:640px){.v9HeroGrid{grid-template-columns:1fr}.v9Nav{grid-template-columns:repeat(2,1fr)}.v9Nav{position:relative}.metricGrid{grid-template-columns:1fr 1fr}}
 </style></head><body><main>
-<h1>A股量化研究</h1><div class="sub">V6.8.1实时模型 · Build 8.0-S-R1 · Walk-Forward短线收益预测冻结验证版</div>
-<div class="tabs card"><button class="tab on" data-p="market">全市场</button><button class="tab" data-p="cand">候选池</button><button class="tab" data-p="focus">重点池</button><button class="tab" data-p="pos">持仓</button></div>
-<div class="card">
+<h1>A股量化执行台</h1><div class="sub">V9.0-M · 全市场短线执行 / 历史无后见回放 · 固定本金80,000元</div>
+<div class="card v9Hero">
+  <div class="v9HeroGrid"><div><b>主目标</b><span>每天从全A股挑最有潜力的1–2只，再给出买 / 持 / 卖动作</span></div><div><b>回放纪律</b><span>历史日只使用当日开盘前数据，开盘模拟成交，100股整手</span></div><div><b>收益口径</b><span>本金80,000元，单股≤35%，往返摩擦默认20bp</span></div></div>
+</div>
+<div class="card v9Nav" id="v9Nav"><button class="on" data-v9view="today">今日执行</button><button data-v9view="replay">全市场历史回放</button><button data-v9view="holdings">持仓管理</button><button data-v9view="research">研究与档案</button></div>
+<div class="tabs card" id="v9TodayTabs"><button class="tab on" data-p="market">市场扫描</button><button class="tab" data-p="cand">今日候选</button><button class="tab" data-p="focus">重点池</button><button class="tab" data-p="pos">持仓</button></div>
+<div class="card" id="runModeCard">
   <b>运行模式</b> <span id="modeBadge" class="pill"></span>
   <div class="toolbar" id="modeToolbar">
     <button class="filter on" data-mode="auto">自动</button>
@@ -32,10 +43,34 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
 <div class="note"><b>V6.9-R1已完成OOS-3冻结验收（6/6），从本Build起参数停止调优，转入前瞻影子验证。</b> 前瞻阶段每天盘前同时冻结V6.9-R1与V6.8.1两套8万元影子账户计划，盘后/次日用真实K线开盘价模拟成交并按收盘价结算；首份交易日盘前计划不可覆盖。周末、节假日或9:30后首次生成仅作演练，不计入正式样本。<b>实时X-Gate仍保持V6.8.1稳定口径，直到前瞻样本达到20/40/60个真实交易日再决定是否晋级。</b></div>
 <div class="note"><b>V6.9-R1只验证两条由归因直接支持的结构假设：</b> ① 买入时只有1/2只合格候选时，不再首日直接打到35%上限，而是先20%/25%，持有满5个交易日且浮盈≥3%、30日主趋势仍完整时再加到35%；② “确认弱势”不再因为市场标签机械砍掉主趋势仍完整的旧仓，只有账户距峰值回撤达到8%且持仓本身非核心趋势时才主动减。D-Core≥55、30日主趋势、35%硬上限、20bp摩擦都不改。<b>归因中55–60分表现最好，但本轮刻意不调D-Core分数带，避免对已看样本过拟合。</b></div>
 
+<div class="note v9PrimaryNote"><b>V9.0-M 主线已改为“全市场 → 选1–2只 → 8万元执行”。</b> 固定12只科技股、V7/V8实验仍保留在“研究与档案”，但不再代表主工具收益。历史全市场回放第一阶段会扫描当前可识别A股并按上市日期约束历史可用股票；由于公开浏览器数据无法完整恢复所有已退市证券和历史ST状态，页面会明确显示“历史股票池覆盖限制”，这类结果只作为研究估计，不冒充严格全市场官方回测。</div>
+<section id="v9ReplaySection" hidden>
+  <div class="card">
+    <b>V9.0-M 全市场历史执行回放</b><span class="small">从目标日期开始，先扫描广义全A股历史K线，再每天只用此前数据排名；最多持有2只，按开盘价模拟买卖。不是固定12股。</span>
+    <div class="metricGrid">
+      <div class="field"><label>回放开始日</label><input id="v90Start" type="date" value="2026-09-14"></div>
+      <div class="field"><label>回放交易日数</label><select id="v90Days"><option value="3">3日</option><option value="5" selected>5日</option><option value="10">10日</option></select></div>
+      <div class="field"><label>初始本金（元）</label><input id="v90Capital" inputmode="decimal" value="80000"></div>
+      <div class="field"><label>最多同时持仓</label><select id="v90TopN"><option value="1">1只</option><option value="2" selected>2只</option><option value="3">3只</option></select></div>
+      <div class="field"><label>单股上限（%）</label><input id="v90MaxPct" inputmode="decimal" value="35"></div>
+      <div class="field"><label>往返摩擦（bp）</label><input id="v90CostBps" inputmode="decimal" value="20"></div>
+    </div>
+    <div class="toolbar"><button id="runV90Replay" class="blue">运行全市场无后见回放</button><button id="stopV90Replay">停止</button></div>
+    <div id="v90Status" class="small">首次运行会逐只读取历史K线，覆盖数千只A股，可能需要几分钟。模型不会根据回放结果自动调参。</div>
+    <div class="bar"><i id="v90Bar"></i></div>
+    <div id="v90Summary" class="scoreStrip"></div>
+    <div id="v90Body"></div>
+  </div>
+  <div class="note"><b>历史覆盖限制：</b> 本阶段股票清单来自可公开读取的A股市场列表，并用上市日期过滤目标日尚未上市股票；已退市股票、历史名称/ST状态无法保证完整恢复，因此仍存在幸存者偏差。V9会把实际扫描数量、成功K线数量和失败数量显示出来；在补齐point-in-time证券主表前，不把该结果称为“严格全市场回测”。</div>
+</section>
+<section id="v9ResearchSection" hidden>
+  <div class="card"><b>研究与档案</b><span class="small">旧版本实验、校准、历史固定池和模型审计集中放到这里。日常使用无需翻这些模块。</span></div>
+  <div id="v9ResearchBody"></div>
+</section>
 <section id="market">
 <div class="card">
-<button id="scan" class="blue">扫描全部A股</button><button id="stopScan" disabled>停止扫描</button><button id="deepAll" disabled>深扫全市场Top40</button><button id="deepTech" disabled>深扫科技Top40</button><button id="testK">测试K线源</button><button id="clear">清缓存</button>
-<p id="ms">正在启动V6.8.1实时模型 / Build 8.0-S-R1 Walk-Forward短线预测冻结验证…</p><div class="bar"><i id="mb"></i></div>
+<button id="scan" class="blue">① 扫描全部A股</button><button id="stopScan" disabled>停止扫描</button><button id="deepAll" disabled>② 深扫全市场Top40</button><button id="deepTech" disabled>深扫科技Top40</button><button id="testK">测试K线源</button><button id="clear">清缓存</button>
+<p id="ms">正在启动V9.0-M全市场执行台…</p><div class="bar"><i id="mb"></i></div>
 </div>
 <div class="grid"><div><b id="n1">0</b><span>全市场</span></div><div><b id="n2">0</b><span>硬过滤后</span></div><div><b id="n3">0/0</b><span>全/科技候选</span></div><div><b id="n4">0</b><span>重点池</span></div></div>
 <div class="card">
@@ -150,7 +185,7 @@ h1{margin:0;font-size:24px}.sub,.small,p{color:#6b7280;font-size:12px}.tabs,.tag
   <div id="execCfgStatus" class="small">默认进取档：8万元本金、单只上限35%、单笔计划损失2.00%、风险距离8%。实时X-Gate继续保持V6.8.1稳定口径；V6.9-R1只在前瞻影子账户中运行，至少完成20/40/60个正式交易日样本后才复核晋级。</div>
 </div>
 <div class="card">
-  <b>Top40 深度候选</b><span id="channelStatus" class="small">当前：科技独立榜</span><div id="replayNotice" class="small"></div>
+  <b>Top40 深度候选</b><span id="channelStatus" class="small">当前：全市场榜</span><div id="replayNotice" class="small"></div>
   <div class="toolbar" id="candidateChannel">
     <button class="filter" data-channel="all">全市场榜</button>
     <button class="filter on" data-channel="tech">科技独立榜</button>
@@ -3676,4 +3711,52 @@ setInterval(()=>{
 },30000);
 if($('ms')&&($('ms').textContent==='等待扫描。'||$('ms').textContent.startsWith('正在启动'))) $('ms').textContent='页面已就绪，可点击“扫描全部A股”。';
 window.__A_SHARE_APP_BOOTED__ = true;
-</script></body></html>
+</script>
+<script>
+(function(){
+'use strict';
+const V90={stop:false,universe:null,kcache:new Map()};
+const q=id=>document.getElementById(id);
+function v9Money(x){return Number.isFinite(x)?Math.round(x).toLocaleString('zh-CN')+'元':'—'}
+function v9Pct(x,d=2){return Number.isFinite(x)?(x*100).toFixed(d)+'%':'—'}
+function v9Mean(a){a=a.filter(Number.isFinite);return a.length?a.reduce((s,x)=>s+x,0)/a.length:NaN}
+function v9Med(a){a=a.filter(Number.isFinite).sort((a,b)=>a-b);if(!a.length)return NaN;let m=Math.floor(a.length/2);return a.length%2?a[m]:(a[m-1]+a[m])/2}
+function v9DateOffset(ds,n){let d=new Date(ds+'T00:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10)}
+function v9Ymd(ds){return String(ds||'').replaceAll('-','')}
+function v9Rank(values,asc=false){const a=values.map((v,i)=>({v,i})).filter(x=>Number.isFinite(x.v)).sort((x,y)=>asc?x.v-y.v:y.v-x.v),out=Array(values.length).fill(0.5);if(a.length<=1)return out;for(let r=0;r<a.length;r++)out[a[r].i]=1-r/(a.length-1);return out}
+function v9Secid(code){return (/^[65]/.test(code)?'1.':'0.')+code}
+function v90ListUrl(host,page){const p=new URLSearchParams({pn:String(page),pz:'200',po:'0',np:'1',ut:'bd1d9ddb04089700cf9c27f6f7426281',fltt:'2',invt:'2',fid:'f12',fs:'m:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',fields:'f12,f14,f26'});return host+'/api/qt/clist/get?'+p}
+async function v90Universe(progress){if(V90.universe)return V90.universe;const hosts=(window.marketHosts&&marketHosts.length)?marketHosts:['https://push2.eastmoney.com'];let rows=[],total=99999,page=1;while(rows.length<total&&page<50){if(V90.stop)throw Error('已停止');let j,last;for(const h of hosts){try{j=await jsonp(v90ListUrl(h,page),7000);if(j?.data)break}catch(e){last=e}}if(!j?.data)throw last||Error('股票列表读取失败');total=+j.data.total||0;for(const x of (j.data.diff||[])){const code=String(x.f12||'').padStart(6,'0'),name=String(x.f14||'');if(!/^((00|30|60|68|8|9)\d{4})$/.test(code))continue;if(/^(ST|\*ST|退市)/i.test(name)||/退$/.test(name))continue;let ld=String(x.f26||'');if(/^\d{8}$/.test(ld))ld=ld.slice(0,4)+'-'+ld.slice(4,6)+'-'+ld.slice(6,8);else ld='';rows.push({code,name,listDate:ld})}progress?.(rows.length,total);page++}const seen=new Set;rows=rows.filter(x=>!seen.has(x.code)&&(seen.add(x.code),true));V90.universe=rows;return rows}
+function v90KUrl(code,beg,end){const p=new URLSearchParams({secid:v9Secid(code),klt:'101',fqt:'1',beg:v9Ymd(beg),end:v9Ymd(end),lmt:'160',ut:'fa5fd1943c7b386f172d6893dbfba10b',fields1:'f1,f2,f3,f4,f5,f6',fields2:'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'});return 'https://push2his.eastmoney.com/api/qt/stock/kline/get?'+p}
+async function v90Kline(stock,beg,end){const key=stock.code+'|'+beg+'|'+end;if(V90.kcache.has(key))return V90.kcache.get(key);const task=(async()=>{const j=await jsonp(v90KUrl(stock.code,beg,end),8500),lines=j?.data?.klines||[];return lines.map(s=>{const a=String(s).split(',');return{date:a[0],open:+a[1],close:+a[2],high:+a[3],low:+a[4],volume:+a[5],amount:+a[6],amp:+a[7],pct:+a[8],chg:+a[9],turn:+a[10]}}).filter(x=>Number.isFinite(x.close)&&x.date)})();V90.kcache.set(key,task);return task}
+async function v90IndexDays(start,n){const beg=v9DateOffset(start,-5),end=v9DateOffset(start,Math.max(25,n*4));const p=new URLSearchParams({secid:'1.000001',klt:'101',fqt:'0',beg:v9Ymd(beg),end:v9Ymd(end),lmt:'80',ut:'fa5fd1943c7b386f172d6893dbfba10b',fields1:'f1,f2,f3,f4,f5,f6',fields2:'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'});const j=await jsonp('https://push2his.eastmoney.com/api/qt/stock/kline/get?'+p,9000);const days=(j?.data?.klines||[]).map(s=>String(s).split(',')[0]).filter(d=>d>=start);return days.slice(0,n)}
+async function v90MapLimit(items,limit,fn,onProgress){let idx=0,done=0,ok=0,fail=0,res=new Array(items.length);async function one(){while(true){const i=idx++;if(i>=items.length)return;if(V90.stop)throw Error('已停止');try{res[i]=await fn(items[i],i);ok++}catch(e){res[i]=null;fail++}done++;onProgress?.(done,items.length,ok,fail)}}await Promise.all(Array.from({length:Math.min(limit,items.length)},one));return{res,ok,fail}}
+function v90Feature(item,date){const k=item.k.filter(x=>x.date<date);if(k.length<22)return null;const n=k.length,last=k[n-1],c=i=>k[Math.max(0,n-1-i)]?.close;const ret=d=>c(d)?last.close/c(d)-1:NaN;const a5=k.slice(-5).map(x=>x.amount),a20=k.slice(-20).map(x=>x.amount),t5=k.slice(-5).map(x=>x.turn);const max20=Math.max(...k.slice(-20).map(x=>x.high)),min20=Math.min(...k.slice(-20).map(x=>x.low));const rets=[];for(let i=Math.max(1,n-10);i<n;i++)rets.push(k[i].close/k[i-1].close-1);const mu=v9Mean(rets),vol=Math.sqrt(v9Mean(rets.map(x=>(x-mu)**2)));return{item,last,r1:ret(1),r3:ret(3),r5:ret(5),r10:ret(10),amountRatio:v9Mean(a5)/(v9Mean(a20)||1),avgAmount:v9Mean(a5),turn:v9Mean(t5),pos20:(last.close-min20)/(max20-min20||1),dd20:last.close/max20-1,vol10:vol}}
+function v90RankDay(items,date){let fs=[];for(const item of items){const f=v90Feature(item,date);if(!f)continue;if(!(f.avgAmount>=5e7)||f.last.close<2)continue;fs.push(f)}if(!fs.length)return[];const r3=v9Rank(fs.map(x=>x.r3)),r5=v9Rank(fs.map(x=>x.r5)),r10=v9Rank(fs.map(x=>x.r10)),ra=v9Rank(fs.map(x=>x.amountRatio)),rp=v9Rank(fs.map(x=>x.pos20)),rt=v9Rank(fs.map(x=>x.turn)),rv=v9Rank(fs.map(x=>x.vol10),true);for(let i=0;i<fs.length;i++){let sc=100*(.22*r3[i]+.22*r5[i]+.10*r10[i]+.18*ra[i]+.13*rp[i]+.08*rt[i]+.07*rv[i]);if(fs[i].r1>.095)sc-=16;if(fs[i].r5>.25)sc-=10;if(fs[i].r1<-.07)sc-=10;if(fs[i].dd20<-.22)sc-=8;fs[i].score=Math.max(0,Math.min(100,sc))}return fs.sort((a,b)=>b.score-a.score)}
+function v90Regime(rank){if(!rank.length)return'未知';const med5=v9Med(rank.map(x=>x.r5)),breadth=rank.filter(x=>x.r1>0).length/rank.length;if(med5>.015&&breadth>.55)return'强势';if(med5<-.018||breadth<.40)return'弱势';return'中性'}
+function v90Reason(f){const tags=[];if(f.r3>.04)tags.push('3日动量强');if(f.r5>.06)tags.push('5日趋势强');if(f.amountRatio>1.25)tags.push('量能增强');if(f.pos20>.85)tags.push('接近20日新高');if(f.turn>3)tags.push('活跃度高');if(!tags.length)tags.push('综合横截面排名靠前');return tags.join(' / ')}
+function v90GetBar(item,date,kind){return item.k.find(x=>x.date===date)?.[kind]}
+async function runV90(){const btn=q('runV90Replay');if(!btn)return;V90.stop=false;btn.disabled=true;q('v90Summary').innerHTML='';q('v90Body').innerHTML='';q('v90Bar').style.width='1%';try{const start=q('v90Start').value;if(!start)throw Error('请选择开始日期');const nDays=+q('v90Days').value||5,capital=+q('v90Capital').value||80000,topN=+q('v90TopN').value||2,maxPct=(+q('v90MaxPct').value||35)/100,cost=(+q('v90CostBps').value||20)/10000/2;const days=await v90IndexDays(start,nDays);if(days.length<nDays)throw Error('目标日期之后交易日不足');q('v90Status').textContent='读取A股证券清单…';const uni=await v90Universe((a,b)=>{q('v90Status').textContent=`读取证券清单 ${a}/${b||'?'}…`;q('v90Bar').style.width='4%'});const end=days[days.length-1],beg=v9DateOffset(start,-100),kend=v9DateOffset(end,7);const eligible=uni.filter(x=>(!x.listDate||x.listDate<start));q('v90Status').textContent=`全市场历史K线扫描：0/${eligible.length}。首次运行可能需要几分钟…`;const loaded=await v90MapLimit(eligible,14,async st=>{const k=await v90Kline(st,beg,kend);return k.length>=22?{...st,k}:null},(done,total,ok,fail)=>{q('v90Bar').style.width=(5+Math.round(done/total*72))+'%';q('v90Status').textContent=`全市场历史K线 ${done}/${total} · 成功${ok} · 失败${fail}`});const items=loaded.res.filter(Boolean);if(items.length<300)throw Error('有效历史股票不足300只，数据源可能限流；稍后重试');let cash=capital,positions=new Map(),peak=capital,maxDD=0,turnover=0,logs=[];for(let di=0;di<days.length;di++){const day=days[di],rank=v90RankDay(items,day),reg=v90Regime(rank),byCode=new Map(rank.map(x=>[x.item.code,x]));let actions=[];let equityPre=cash;for(const p of positions.values()){const prev=p.item.k.filter(x=>x.date<day).at(-1)?.close||p.entry;equityPre+=p.shares*prev}
+      // sell decisions at today's open
+      for(const [code,p] of [...positions]){const f=byCode.get(code),open=v90GetBar(p.item,day,'open');if(!Number.isFinite(open))continue;const prevClose=p.item.k.filter(x=>x.date<day).at(-1)?.close||p.entry;p.peak=Math.max(p.peak||p.entry,prevClose);const held=di-p.buyIndex,retOpen=open/p.entry-1,trail=p.peak/p.entry-1>=.08 && prevClose/p.peak-1<=-.04;const exit=retOpen<=-.06||held>=5||trail||(held>=2&&(!f||f.score<48));if(exit){const proceeds=p.shares*open*(1-cost);cash+=proceeds;turnover+=p.shares*open;actions.push(`卖${code} ${p.shares}股`);positions.delete(code)}}
+      // buy top candidates
+      const slots=Math.max(0,topN-positions.size),picks=rank.filter(f=>f.score>=62&&!positions.has(f.item.code)).slice(0,slots);for(const f of picks){const open=v90GetBar(f.item,day,'open');if(!Number.isFinite(open)||open<=0)continue;const equity=cash+[...positions.values()].reduce((s,p)=>s+p.shares*(v90GetBar(p.item,day,'open')||p.entry),0);const target=Math.min(equity*maxPct,cash/(Math.max(1,picks.length)));let shares=Math.floor(target/(open*(1+cost))/100)*100;if(shares<100)continue;let need=shares*open*(1+cost);if(need>cash){shares=Math.floor(cash/(open*(1+cost))/100)*100;need=shares*open*(1+cost)}if(shares<100)continue;cash-=need;turnover+=shares*open;positions.set(f.item.code,{item:f.item,shares,entry:open,buyIndex:di,peak:open,score:f.score});actions.push(`买${f.item.code} ${shares}股`)}
+      let eq=cash;for(const p of positions.values()){const close=v90GetBar(p.item,day,'close')||p.entry;eq+=p.shares*close;p.peak=Math.max(p.peak,close)}peak=Math.max(peak,eq);maxDD=Math.min(maxDD,eq/peak-1);const top=rank.slice(0,5);logs.push({day,reg,eq,cash,actions,hold:[...positions.keys()],top});q('v90Status').textContent=`执行回放 ${di+1}/${days.length} · ${day}`;q('v90Bar').style.width=(78+Math.round((di+1)/days.length*20))+'%'}
+      const lastDay=days.at(-1);let liquidation=cash;for(const p of positions.values()){const close=v90GetBar(p.item,lastDay,'close')||p.entry;liquidation+=p.shares*close*(1-cost)}const ret=liquidation/capital-1,tradeCount=logs.reduce((n,x)=>n+x.actions.length,0);q('v90Bar').style.width='100%';q('v90Status').textContent=`完成：${days[0]}→${lastDay}，广义全市场有效K线 ${items.length}/${eligible.length}，期末可清算资产 ${v9Money(liquidation)}。`;
+      q('v90Summary').innerHTML=`<div class="score"><b>${v9Money(liquidation)}</b><span>期末可清算资产</span></div><div class="score"><b>${v9Pct(ret)}</b><span>区间净收益</span></div><div class="score"><b>${v9Pct(maxDD)}</b><span>最大收盘回撤</span></div><div class="score"><b>${tradeCount}</b><span>买卖动作数</span></div><div class="score"><b>${items.length}</b><span>成功历史股票</span></div><div class="score"><b>${(turnover/capital).toFixed(2)}x</b><span>成交额/本金</span></div>`;
+      const rows=logs.map(x=>`<tr><td>${x.day}</td><td>${x.reg}</td><td>${x.actions.join('；')||'不交易'}</td><td>${v9Money(x.eq)}</td><td>${v9Money(x.cash)}</td><td>${x.hold.join(',')||'现金'}</td></tr>`).join('');const picks=logs.map(x=>`<div class="v90Pick"><b>${x.day} · ${x.reg}</b>${x.top.slice(0,3).map((f,i)=>`<div class="v90Reason">${i+1}. ${f.item.code} ${f.item.name} · 分${f.score.toFixed(1)} · 3日${v9Pct(f.r3)} · 5日${v9Pct(f.r5)} · ${v90Reason(f)}</div>`).join('')}</div>`).join('');q('v90Body').innerHTML=`<div class="v90Warn">这是“广义全市场历史执行回放”，不是固定12股；但证券主表仍缺完整退市股和历史ST状态，所以存在幸存者偏差。真正严格版本需补齐point-in-time股票主表后再用于收益定论。</div><div class="v9SectionTitle">逐日操作</div><div style="overflow:auto"><table><thead><tr><th>日期</th><th>阶段</th><th>开盘动作</th><th>收盘资产</th><th>现金</th><th>持仓</th></tr></thead><tbody>${rows}</tbody></table></div><div class="v9SectionTitle">每日全市场Top3</div>${picks}`
+    }catch(e){q('v90Status').textContent='回放失败：'+(e?.message||e);q('v90Bar').style.width='0%'}finally{btn.disabled=false}}
+function v9Organize(){
+  // hide version-history notes from the main daily workflow
+  document.querySelectorAll('main > .note').forEach(n=>{if(!n.classList.contains('v9PrimaryNote'))n.classList.add('v9LegacyNote')});
+  const research=q('v9ResearchBody'),cand=q('cand');if(research&&cand){[...cand.children].forEach(el=>{if(!el.classList?.contains('card'))return;const t=(el.textContent||'').trim();if(/真实盘前精度校准|历史回放实验室|固定科技池历史仿真|V8\.0-S Walk-Forward|V7\.3-S|历史研究与归因/.test(t))research.appendChild(el)})}
+  // default to full-market candidate channel, not tech-only
+  const allBtn=document.querySelector('#candidateChannel [data-channel="all"]');if(allBtn&&!allBtn.classList.contains('on'))try{allBtn.click()}catch{}
+  const techDeep=q('deepTech');if(techDeep)techDeep.style.display='none';
+}
+function v9Show(view){document.querySelectorAll('#v9Nav button').forEach(b=>b.classList.toggle('on',b.dataset.v9view===view));const tabs=q('v9TodayTabs'),mode=q('runModeCard'),rep=q('v9ReplaySection'),research=q('v9ResearchSection'),secs=['market','cand','focus','pos'].map(q);if(rep)rep.hidden=view!=='replay';if(research)research.hidden=view!=='research';if(tabs)tabs.hidden=view!=='today';if(mode)mode.hidden=view!=='today';if(view==='today'){const active=document.querySelector('#v9TodayTabs .tab.on')?.dataset.p||'market';secs.forEach(x=>{if(x)x.hidden=x.id!==active})}else if(view==='holdings'){secs.forEach(x=>{if(x)x.hidden=x.id!=='pos'})}else secs.forEach(x=>{if(x)x.hidden=true})}
+function init(){v9Organize();q('runV90Replay')?.addEventListener('click',runV90);q('stopV90Replay')?.addEventListener('click',()=>{V90.stop=true;q('v90Status').textContent='正在停止…'});document.querySelectorAll('#v9Nav button').forEach(b=>b.addEventListener('click',()=>v9Show(b.dataset.v9view)));document.querySelectorAll('#v9TodayTabs .tab').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>v9Show('today'),0)));v9Show('today')}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else setTimeout(init,0);
+})();
+</script>
+</body></html>
