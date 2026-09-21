@@ -7,7 +7,7 @@ const EM_HOSTS = [
   'https://89.push2.eastmoney.com'
 ];
 
-const UA = 'Mozilla/5.0 AShareQuant/10.0.3';
+const UA = 'Mozilla/5.0 AShareQuant/10.0.4';
 
 function secid(code) {
   return /^(6|68)/.test(code) ? `1.${code}` : `0.${code}`;
@@ -15,7 +15,10 @@ function secid(code) {
 
 function parseMaybeJsonp(text) {
   const t = String(text || '').trim();
-  if (!t) throw new Error('empty upstream response');
+
+  if (!t) {
+    throw new Error('empty upstream response');
+  }
 
   try {
     return JSON.parse(t);
@@ -33,23 +36,33 @@ function parseMaybeJsonp(text) {
 
 async function fetchParsed(url, timeout = 8500) {
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeout);
+
+  const timer = setTimeout(
+    () => ctrl.abort(),
+    timeout
+  );
 
   try {
     const r = await fetch(url, {
       signal: ctrl.signal,
       headers: {
         'user-agent': UA,
-        'accept': 'application/json,text/javascript,*/*;q=0.8',
-        'referer': 'https://quote.eastmoney.com/'
+        'accept':
+          'application/json,text/javascript,*/*;q=0.8',
+        'referer':
+          'https://quote.eastmoney.com/'
       }
     });
 
     if (!r.ok) {
-      throw new Error(`upstream HTTP ${r.status}`);
+      throw new Error(
+        `upstream HTTP ${r.status}`
+      );
     }
 
-    return parseMaybeJsonp(await r.text());
+    return parseMaybeJsonp(
+      await r.text()
+    );
   } finally {
     clearTimeout(timer);
   }
@@ -64,7 +77,8 @@ function marketUrl(host, page, pz) {
     fltt: '2',
     invt: '2',
     fid: 'f6',
-    fs: 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
+    fs:
+      'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048',
     fields:
       'f12,f14,f2,f3,f5,f6,f8,f9,f10,f20,f21,f23,f24,f25,f62,f184,f100'
   });
@@ -80,11 +94,16 @@ function klineUrl(code) {
     beg: '0',
     end: '20500101',
     lmt: '120',
-    fields1: 'f1,f2,f3,f4,f5,f6',
-    fields2: 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'
+    fields1:
+      'f1,f2,f3,f4,f5,f6',
+    fields2:
+      'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'
   });
 
-  return `https://push2his.eastmoney.com/api/qt/stock/kline/get?${p}`;
+  return (
+    'https://push2his.eastmoney.com/' +
+    `api/qt/stock/kline/get?${p}`
+  );
 }
 
 function flowUrl(code) {
@@ -92,12 +111,16 @@ function flowUrl(code) {
     lmt: '30',
     klt: '101',
     secid: secid(code),
-    fields1: 'f1,f2,f3,f7',
+    fields1:
+      'f1,f2,f3,f7',
     fields2:
       'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63'
   });
 
-  return `https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?${p}`;
+  return (
+    'https://push2his.eastmoney.com/' +
+    `api/qt/stock/fflow/daykline/get?${p}`
+  );
 }
 
 function quoteUrl(code) {
@@ -109,7 +132,10 @@ function quoteUrl(code) {
     invt: '2'
   });
 
-  return `https://push2.eastmoney.com/api/qt/stock/get?${p}`;
+  return (
+    'https://push2.eastmoney.com/' +
+    `api/qt/stock/get?${p}`
+  );
 }
 
 function newsUrl(code) {
@@ -133,13 +159,21 @@ function newsUrl(code) {
   };
 
   return (
-    'https://search-api-web.eastmoney.com/search/jsonp?param=' +
-    encodeURIComponent(JSON.stringify(body)) +
+    'https://search-api-web.eastmoney.com/' +
+    'search/jsonp?param=' +
+    encodeURIComponent(
+      JSON.stringify(body)
+    ) +
     '&cb=quantcb'
   );
 }
 
-function send(res, status, data, maxAge = 20) {
+function send(
+  res,
+  status,
+  data,
+  maxAge = 20
+) {
   res.setHeader(
     'content-type',
     'application/json; charset=utf-8'
@@ -153,16 +187,31 @@ function send(res, status, data, maxAge = 20) {
     )}`
   );
 
-  res.status(status).send(JSON.stringify(data));
+  res
+    .status(status)
+    .send(JSON.stringify(data));
 }
 
-async function fetchMarketPage(page, pz = 100) {
+function sleep(ms) {
+  return new Promise(
+    resolve => setTimeout(resolve, ms)
+  );
+}
+
+async function fetchMarketPage(
+  page,
+  pz = 100
+) {
   let last;
 
   for (const host of EM_HOSTS) {
     try {
       const j = await fetchParsed(
-        marketUrl(host, page, pz),
+        marketUrl(
+          host,
+          page,
+          pz
+        ),
         6500
       );
 
@@ -174,31 +223,58 @@ async function fetchMarketPage(page, pz = 100) {
     }
   }
 
-  throw last || new Error('market upstream unavailable');
-}
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
+  throw (
+    last ||
+    new Error(
+      'market upstream unavailable'
+    )
+  );
 }
 
-async function fetchMarketPageRetry(page, pz = 100, retries = 2) {
+async function fetchMarketPageRetry(
+  page,
+  pz = 100,
+  retries = 2
+) {
   let last;
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
+  for (
+    let attempt = 0;
+    attempt <= retries;
+    attempt++
+  ) {
     try {
-      return await fetchMarketPage(page, pz);
+      return await fetchMarketPage(
+        page,
+        pz
+      );
     } catch (e) {
       last = e;
 
       if (attempt < retries) {
-        await sleep(180 * (attempt + 1));
+        await sleep(
+          180 * (attempt + 1)
+        );
       }
     }
   }
 
-  throw last || new Error(`market page ${page} unavailable`);
+  throw (
+    last ||
+    new Error(
+      `market page ${page} unavailable`
+    )
+  );
 }
-async function mapLimit(items, n, fn) {
-  const out = new Array(items.length);
+
+async function mapLimit(
+  items,
+  n,
+  fn
+) {
+  const out =
+    new Array(items.length);
+
   let next = 0;
 
   async function worker() {
@@ -210,10 +286,16 @@ async function mapLimit(items, n, fn) {
       }
 
       try {
-        out[i] = await fn(items[i], i);
+        out[i] =
+          await fn(
+            items[i],
+            i
+          );
       } catch (e) {
         out[i] = {
-          error: e?.message || String(e)
+          error:
+            e?.message ||
+            String(e)
         };
       }
     }
@@ -221,7 +303,12 @@ async function mapLimit(items, n, fn) {
 
   await Promise.all(
     Array.from(
-      { length: Math.max(1, n) },
+      {
+        length: Math.max(
+          1,
+          n
+        )
+      },
       worker
     )
   );
@@ -233,21 +320,28 @@ function parseCodes(raw, max) {
   return String(raw || '')
     .split(',')
     .map(s => s.trim())
-    .filter(s => /^\d{6}$/.test(s))
+    .filter(
+      s => /^\d{6}$/.test(s)
+    )
     .slice(0, max);
 }
 
-export default async function handler(req, res) {
+export default async function handler(
+  req,
+  res
+) {
   const u = new URL(
     req.url,
     'http://localhost'
   );
 
   const action =
-    u.searchParams.get('action') || '';
+    u.searchParams.get('action') ||
+    '';
 
   const code =
-    u.searchParams.get('code') || '';
+    u.searchParams.get('code') ||
+    '';
 
   try {
     if (action === 'market') {
@@ -274,215 +368,197 @@ export default async function handler(req, res) {
       return send(
         res,
         200,
-        await fetchMarketPage(page, pz),
+        await fetchMarketPage(
+          page,
+          pz
+        ),
         10
       );
     }
-if (action === 'market_chunk') {
-  const pz = 100;
 
-  const start = Math.max(
-    1,
-    Math.min(
-      100,
-      Number(u.searchParams.get('start')) || 1
-    )
-  );
-
-  const count = Math.max(
-    1,
-    Math.min(
-      10,
-      Number(u.searchParams.get('count')) || 10
-    )
-  );
-
-  const pageNums = Array.from(
-    { length: count },
-    (_, i) => start + i
-  ).filter(p => p <= 100);
-
-  const fetched = await mapLimit(
-    pageNums,
-    3,
-    async p => {
-      const j = await fetchMarketPageRetry(
-        p,
-        pz,
-        2
-      );
-
-      return {
-        page: p,
-        total: +j?.data?.total || 0,
-        rows: j?.data?.diff || []
-      };
-    }
-  );
-
-  const rows = [];
-  const failedPages = [];
-  let total = 0;
-
-  for (let i = 0; i < fetched.length; i++) {
-    const z = fetched[i];
-
-    if (z?.error) {
-      failedPages.push(pageNums[i]);
-    } else {
-      total = total || +z?.total || 0;
-      rows.push(...(z?.rows || []));
-    }
-  }
-
-  return send(
-    res,
-    200,
-    {
-      data: {
-        total,
-        start,
-        count,
-        diff: rows,
-        failedPages
-      }
-    },
-    15
-  );
-}
-
-if (action === 'market_pages') {
-  const pz = 100;
-
-  const pages = String(
-    u.searchParams.get('pages') || ''
-  )
-    .split(',')
-    .map(x => Number(x))
-    .filter(
-      x =>
-        Number.isInteger(x) &&
-        x >= 1 &&
-        x <= 100
-    )
-    .slice(0, 12);
-
-  if (!pages.length) {
-    return send(
-      res,
-      400,
-      { error: 'no valid pages' },
-      0
-    );
-  }
-
-  const fetched = await mapLimit(
-    pages,
-    3,
-    async p => {
-      const j = await fetchMarketPageRetry(
-        p,
-        pz,
-        3
-      );
-
-      return {
-        page: p,
-        total: +j?.data?.total || 0,
-        rows: j?.data?.diff || []
-      };
-    }
-  );
-
-  const rows = [];
-  const failedPages = [];
-  let total = 0;
-
-  for (let i = 0; i < fetched.length; i++) {
-    const z = fetched[i];
-
-    if (z?.error) {
-      failedPages.push(pages[i]);
-    } else {
-      total = total || +z?.total || 0;
-      rows.push(...(z?.rows || []));
-    }
-  }
-
-  return send(
-    res,
-    200,
-    {
-      data: {
-        total,
-        diff: rows,
-        failedPages
-      }
-    },
-    10
-  );
-}
-    if (action === 'market_all') {
+    if (
+      action === 'market_chunk'
+    ) {
       const pz = 100;
 
-      const first =
-        await fetchMarketPage(1, pz);
-
-      const total =
-        +first?.data?.total || 0;
-
-      const pages = Math.max(
+      const start = Math.max(
         1,
-        Math.ceil(total / pz)
+        Math.min(
+          100,
+          Number(
+            u.searchParams.get(
+              'start'
+            )
+          ) || 1
+        )
       );
 
-      const rows = [
-        ...(first?.data?.diff || [])
-      ];
-
-      const pageNums = Array.from(
-        {
-          length: Math.max(
-            0,
-            pages - 1
-          )
-        },
-        (_, i) => i + 2
+      const count = Math.max(
+        1,
+        Math.min(
+          10,
+          Number(
+            u.searchParams.get(
+              'count'
+            )
+          ) || 10
+        )
       );
+
+      const pageNums =
+        Array.from(
+          { length: count },
+          (_, i) => start + i
+        ).filter(
+          p => p <= 100
+        );
 
       const fetched =
         await mapLimit(
           pageNums,
-          6,
+          3,
           async p => {
             const j =
-              await fetchMarketPage(
+              await fetchMarketPageRetry(
                 p,
-                pz
+                pz,
+                2
               );
 
             return {
               page: p,
+              total:
+                +j?.data?.total ||
+                0,
               rows:
-                j?.data?.diff || []
+                j?.data?.diff ||
+                []
             };
           }
         );
 
+      const rows = [];
       const failedPages = [];
+      let total = 0;
 
       for (
         let i = 0;
         i < fetched.length;
         i++
       ) {
-        const z = fetched[i];
+        const z =
+          fetched[i];
 
         if (z?.error) {
           failedPages.push(
             pageNums[i]
           );
         } else {
+          total =
+            total ||
+            +z?.total ||
+            0;
+
+          rows.push(
+            ...(z?.rows || [])
+          );
+        }
+      }
+
+      return send(
+        res,
+        200,
+        {
+          data: {
+            total,
+            start,
+            count,
+            diff: rows,
+            failedPages
+          }
+        },
+        15
+      );
+    }
+
+    if (
+      action === 'market_pages'
+    ) {
+      const pz = 100;
+
+      const pages = String(
+        u.searchParams.get(
+          'pages'
+        ) || ''
+      )
+        .split(',')
+        .map(x => Number(x))
+        .filter(
+          x =>
+            Number.isInteger(x) &&
+            x >= 1 &&
+            x <= 100
+        )
+        .slice(0, 12);
+
+      if (!pages.length) {
+        return send(
+          res,
+          400,
+          {
+            error:
+              'no valid pages'
+          },
+          0
+        );
+      }
+
+      const fetched =
+        await mapLimit(
+          pages,
+          3,
+          async p => {
+            const j =
+              await fetchMarketPageRetry(
+                p,
+                pz,
+                3
+              );
+
+            return {
+              page: p,
+              total:
+                +j?.data?.total ||
+                0,
+              rows:
+                j?.data?.diff ||
+                []
+            };
+          }
+        );
+
+      const rows = [];
+      const failedPages = [];
+      let total = 0;
+
+      for (
+        let i = 0;
+        i < fetched.length;
+        i++
+      ) {
+        const z =
+          fetched[i];
+
+        if (z?.error) {
+          failedPages.push(
+            pages[i]
+          );
+        } else {
+          total =
+            total ||
+            +z?.total ||
+            0;
+
           rows.push(
             ...(z?.rows || [])
           );
@@ -503,17 +579,36 @@ if (action === 'market_pages') {
       );
     }
 
-    if (action === 'deep_batch') {
-      const codes = parseCodes(
-        u.searchParams.get('codes'),
-        30
+    if (
+      action === 'market_all'
+    ) {
+      return send(
+        res,
+        410,
+        {
+          error:
+            'market_all retired; use market_chunk'
+        },
+        0
       );
+    }
+
+    if (
+      action === 'deep_batch'
+    ) {
+      const codes =
+        parseCodes(
+          u.searchParams.get(
+            'codes'
+          ),
+          30
+        );
 
       if (!codes.length) {
         return send(
           res,
           400,
-   s       {
+          {
             error:
               'no valid codes'
           },
@@ -555,27 +650,33 @@ if (action === 'market_pages') {
         res,
         200,
         {
-          items: items.map(
-            (z, i) =>
-              z?.error
-                ? {
-                    code:
-                      codes[i],
-                    error:
-                      z.error
-                  }
-                : z
-          )
+          items:
+            items.map(
+              (z, i) =>
+                z?.error
+                  ? {
+                      code:
+                        codes[i],
+                      error:
+                        z.error
+                    }
+                  : z
+            )
         },
         60
       );
     }
 
-    if (action === 'news_batch') {
-      const codes = parseCodes(
-        u.searchParams.get('codes'),
-        8
-      );
+    if (
+      action === 'news_batch'
+    ) {
+      const codes =
+        parseCodes(
+          u.searchParams.get(
+            'codes'
+          ),
+          8
+        );
 
       if (!codes.length) {
         return send(
@@ -613,17 +714,18 @@ if (action === 'market_pages') {
         res,
         200,
         {
-          items: items.map(
-            (z, i) =>
-              z?.error
-                ? {
-                    code:
-                      codes[i],
-                    error:
-                      z.error
-                  }
-                : z
-          )
+          items:
+            items.map(
+              (z, i) =>
+                z?.error
+                  ? {
+                      code:
+                        codes[i],
+                      error:
+                        z.error
+                    }
+                  : z
+            )
         },
         120
       );
