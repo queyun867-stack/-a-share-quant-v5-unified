@@ -1,4 +1,4 @@
-export const config = { maxDuration: 30 };
+饿export const config = { maxDuration: 30 };
 
 const EM_HOSTS = [
   'https://push2.eastmoney.com',
@@ -176,7 +176,27 @@ async function fetchMarketPage(page, pz = 100) {
 
   throw last || new Error('market upstream unavailable');
 }
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
 
+async function fetchMarketPageRetry(page, pz = 100, retries = 2) {
+  let last;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fetchMarketPage(page, pz);
+    } catch (e) {
+      last = e;
+
+      if (attempt < retries) {
+        await sleep(180 * (attempt + 1));
+      }
+    }
+  }
+
+  throw last || new Error(`market page ${page} unavailable`);
+}
 async function mapLimit(items, n, fn) {
   const out = new Array(items.length);
   let next = 0;
@@ -258,7 +278,150 @@ export default async function handler(req, res) {
         10
       );
     }
+if (action === 'market_chunk') {
+  const pz = 100;
 
+  const start = Math.max(
+    1,
+    Math.min(
+      100,
+      Number(u.searchParams.get('start')) || 1
+    )
+  );
+
+  const count = Math.max(
+    1,
+    Math.min(
+      10,
+      Number(u.searchParams.get('count')) || 10
+    )
+  );
+
+  const pageNums = Array.from(
+    { length: count },
+    (_, i) => start + i
+  ).filter(p => p <= 100);
+
+  const fetched = await mapLimit(
+    pageNums,
+    3,
+    async p => {
+      const j = await fetchMarketPageRetry(
+        p,
+        pz,
+        2
+      );
+
+      return {
+        page: p,
+        total: +j?.data?.total || 0,
+        rows: j?.data?.diff || []
+      };
+    }
+  );
+
+  const rows = [];
+  const failedPages = [];
+  let total = 0;
+
+  for (let i = 0; i < fetched.length; i++) {
+    const z = fetched[i];
+
+    if (z?.error) {
+      failedPages.push(pageNums[i]);
+    } else {
+      total = total || +z?.total || 0;
+      rows.push(...(z?.rows || []));
+    }
+  }
+
+  return send(
+    res,
+    200,
+    {
+      data: {
+        total,
+        start,
+        count,
+        diff: rows,
+        failedPages
+      }
+    },
+    15
+  );
+}
+
+if (action === 'market_pages') {
+  const pz = 100;
+
+  const pages = String(
+    u.searchParams.get('pages') || ''
+  )
+    .split(',')
+    .map(x => Number(x))
+    .filter(
+      x =>
+        Number.isInteger(x) &&
+        x >= 1 &&
+        x <= 100
+    )
+    .slice(0, 12);
+
+  if (!pages.length) {
+    return send(
+      res,
+      400,
+      { error: 'no valid pages' },
+      0
+    );
+  }
+
+  const fetched = await mapLimit(
+    pages,
+    3,
+    async p => {
+      const j = await fetchMarketPageRetry(
+        p,
+        pz,
+        3
+      );
+
+      return {
+        page: p,
+        total: +j?.data?.total || 0,
+        rows: j?.data?.diff || []
+      };
+    }
+  );
+
+  const rows = [];
+  const failedPages = [];
+  let total = 0;
+
+  for (let i = 0; i < fetched.length; i++) {
+    const z = fetched[i];
+
+    if (z?.error) {
+      failedPages.push(pages[i]);
+    } else {
+      total = total || +z?.total || 0;
+      rows.push(...(z?.rows || []));
+    }
+  }
+
+  return send(
+    res,
+    200,
+    {
+      data: {
+        total,
+        diff: rows,
+        failedPages
+      }
+    },
+    10
+  );
+}
     if (action === 'market_all') {
       const pz = 100;
 
@@ -350,7 +513,7 @@ export default async function handler(req, res) {
         return send(
           res,
           400,
-          {
+   s       {
             error:
               'no valid codes'
           },
