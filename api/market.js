@@ -7,7 +7,7 @@ const EM_HOSTS = [
   'https://89.push2.eastmoney.com'
 ];
 
-const UA = 'Mozilla/5.0 AShareQuant/10.1.7-S';
+const UA = 'Mozilla/5.0 AShareQuant/10.1.8-S';
 const MARKET_FS = 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048';
 const MARKET_FIELDS = 'f12,f14,f2,f3,f5,f6,f8,f9,f10,f20,f21,f23,f24,f25,f62,f184,f100';
 
@@ -73,6 +73,126 @@ function flowUrl(code) {
     fields2: 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61,f62,f63'
   });
   return `https://push2his.eastmoney.com/api/qt/stock/fflow/daykline/get?${p}`;
+}
+
+
+function txCode(code) {
+  return /^(6|68)/.test(code) ? `sh${code}` : `sz${code}`;
+}
+
+function tencentKlineUrl(code, count = 180) {
+  const tc = txCode(code);
+  return `https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${tc},day,,,${count},qfq`;
+}
+
+async function fetchTencentKline(code, timeout = 5500) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeout);
+
+  try {
+    const r = await fetch(tencentKlineUrl(code), {
+      signal: ctrl.signal,
+      headers: {
+        'user-agent': UA,
+        'accept': 'application/json,text/plain,*/*',
+        'referer': 'https://gu.qq.com/'
+      }
+    });
+
+    if (!r.ok) throw new Error(`tencent HTTP ${r.status}`);
+
+    const j = JSON.parse(await r.text());
+    const tc = txCode(code);
+    const box = j?.data?.[tc] || {};
+    const rows = box.qfqday || box.day || [];
+
+    if (!Array.isArray(rows) || rows.length < 35) {
+      throw new Error('tencent kline insufficient');
+    }
+
+    const klines = rows.map(row => {
+      const date = String(row?.[0] || '');
+      const open = +row?.[1];
+      const close = +row?.[2];
+      const high = +row?.[3];
+      const low = +row?.[4];
+      const vol = +row?.[5];
+      const amount = Number.isFinite(vol) && Number.isFinite(close)
+        ? vol * 100 * close
+        : 0;
+
+      return [
+        date,
+        open,
+        close,
+        high,
+        low,
+        vol,
+        amount.toFixed(2)
+      ].join(',');
+    }).filter(s => !s.includes('NaN'));
+
+    if (klines.length < 35) {
+      throw new Error('tencent kline parse insufficient');
+    }
+
+    return {
+      data: { klines },
+      source: 'tencent-kline-fallback'
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function neutralFlowFromKline(kline) {
+  const rows = (kline?.data?.klines || []).slice(-30);
+
+  return {
+    data: {
+      klines: rows.map(s => {
+        const a = String(s).split(',');
+        const date = a[0] || '';
+        const close = Number.isFinite(+a[2]) ? +a[2] : 0;
+        return `${date},0,0,0,0,0,0,0,0,0,0,${close},0`;
+      })
+    },
+    source: 'neutral-flow-fallback',
+    degraded: true
+  };
+}
+
+async function fetchDeepOne(code) {
+  let kline = null;
+  let klineSource = 'eastmoney';
+
+  try {
+    kline = await fetchParsed(klineUrl(code), 3200);
+  } catch {
+    kline = await fetchTencentKline(code, 5500);
+    klineSource = 'tencent';
+  }
+
+  let flow = null;
+  let flowSource = 'eastmoney';
+
+  try {
+    flow = await fetchParsed(flowUrl(code), 2600);
+  } catch {
+    flow = neutralFlowFromKline(kline);
+    flowSource = 'neutral';
+  }
+
+  return {
+    code,
+    kline,
+    flow,
+    dataQuality: {
+      klineSource,
+      flowSource,
+      degraded: klineSource !== 'eastmoney' || flowSource !== 'eastmoney'
+    }
+  };
 }
 
 function quoteUrl(code) {
@@ -282,13 +402,7 @@ export default async function handler(req, res) {
     if (action === 'deep_batch') {
       const codes = parseCodes(u.searchParams.get('codes'), 30);
       if (!codes.length) return send(res, 400, { error: 'no valid codes' }, 0);
-      const items = await mapLimit(codes, 5, async c => {
-        const [kline, flow] = await Promise.all([
-          fetchParsed(klineUrl(c), 9000),
-          fetchParsed(flowUrl(c), 9000).catch(() => null)
-        ]);
-        return { code: c, kline, flow };
-      });
+      const items = await mapLimit(codes, 6, async c => fetchDeepOne(c));
       return send(res, 200, { items: items.map((z, i) => z?.error ? { code: codes[i], error: z.error } : z) }, 60);
     }
 
@@ -304,8 +418,23 @@ export default async function handler(req, res) {
 
     if (!/^\d{6}$/.test(code)) return send(res, 400, { error: 'invalid stock code' }, 0);
 
-    if (action === 'kline') return send(res, 200, await fetchParsed(klineUrl(code), 9000), 300);
-    if (action === 'flow') return send(res, 200, await fetchParsed(flowUrl(code), 9000), 120);
+    if (action === 'kline') {
+      try {
+        return send(res, 200, await fetchParsed(klineUrl(code), 3200), 300);
+      } catch {
+        return send(res, 200, await fetchTencentKline(code, 5500), 300);
+      }
+    }
+    if (action === 'flow') {
+      try {
+        return send(res, 200, await fetchParsed(flowUrl(code), 2600), 120);
+      } catch {
+        let kline;
+        try { kline = await fetchParsed(klineUrl(code), 3200); }
+        catch { kline = await fetchTencentKline(code, 5500); }
+        return send(res, 200, neutralFlowFromKline(kline), 60);
+      }
+    }
     if (action === 'quote') return send(res, 200, await fetchParsed(quoteUrl(code), 7000), 8);
     if (action === 'news') return send(res, 200, await fetchParsed(newsUrl(code), 9000), 180);
 
