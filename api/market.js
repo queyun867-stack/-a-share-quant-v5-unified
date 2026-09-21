@@ -7,7 +7,7 @@ const EM_HOSTS = [
   'https://89.push2.eastmoney.com'
 ];
 
-const UA = 'Mozilla/5.0 AShareQuant/10.1-S';
+const UA = 'Mozilla/5.0 AShareQuant/10.1.7-S';
 const MARKET_FS = 'm:0+t:6,m:0+t:80,m:1+t:2,m:1+t:23,m:0+t:81+s:2048';
 const MARKET_FIELDS = 'f12,f14,f2,f3,f5,f6,f8,f9,f10,f20,f21,f23,f24,f25,f62,f184,f100';
 
@@ -53,15 +53,19 @@ function marketUrl(host, page, pz, fid = 'f6', po = '1') {
   return `${host}/api/qt/clist/get?${p}`;
 }
 
+function ymdDaysAgo(days) {
+  const d = new Date(Date.now() - days * 86400000);
+  return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
 function klineUrl(code) {
   const p = new URLSearchParams({
-    secid: secid(code), klt: '101', fqt: '1', beg: '0', end: '20500101', lmt: '120',
+    secid: secid(code), klt: '101', fqt: '1', beg: ymdDaysAgo(300), end: '20500101', lmt: '180',
     fields1: 'f1,f2,f3,f4,f5,f6',
     fields2: 'f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61'
   });
   return `https://push2his.eastmoney.com/api/qt/stock/kline/get?${p}`;
 }
-
 function flowUrl(code) {
   const p = new URLSearchParams({
     lmt: '30', klt: '101', secid: secid(code),
@@ -105,22 +109,24 @@ function send(res, status, data, maxAge = 20) {
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-async function fetchMarketRank(fid, page = 1, pz = 100, retries = 2) {
+async function fetchMarketRank(fid, page = 1, pz = 100, seed = 0) {
   let last;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    for (const host of EM_HOSTS) {
-      try {
-        const j = await fetchParsed(marketUrl(host, page, pz, fid, '1'), 6500);
-        if (j?.data) return j;
-      } catch (e) {
-        last = e;
-      }
+  const hosts = [
+    EM_HOSTS[seed % EM_HOSTS.length],
+    EM_HOSTS[(seed + 1) % EM_HOSTS.length]
+  ];
+
+  for (const host of hosts) {
+    try {
+      const j = await fetchParsed(marketUrl(host, page, pz, fid, '1'), 3500);
+      if (j?.data) return j;
+    } catch (e) {
+      last = e;
     }
-    if (attempt < retries) await sleep(220 * (attempt + 1));
   }
+
   throw last || new Error(`rank source ${fid} unavailable`);
 }
-
 async function mapLimit(items, n, fn) {
   const out = new Array(items.length);
   let next = 0;
@@ -140,7 +146,15 @@ function parseCodes(raw, max) {
   return String(raw || '').split(',').map(s => s.trim()).filter(s => /^\d{6}$/.test(s)).slice(0, max);
 }
 
+let rankedMemory = null;
+
 async function rankedCandidates() {
+  const now = Date.now();
+
+  if (rankedMemory && now - rankedMemory.t < 120000) {
+    return rankedMemory.value;
+  }
+
   const specs = [
     { key: 'mainNet', fid: 'f62', weight: 1.00 },
     { key: 'mainPct', fid: 'f184', weight: 0.90 },
@@ -150,10 +164,27 @@ async function rankedCandidates() {
     { key: 'swingMomentum', fid: 'f24', weight: 0.45 }
   ];
 
-  const lists = await mapLimit(specs, 2, async spec => {
-    const first = await fetchMarketRank(spec.fid, 1, 100, 2);
-    const second = await fetchMarketRank(spec.fid, 2, 100, 2).catch(() => null);
-    return { spec, total: +first?.data?.total || 0, rows: [...(first?.data?.diff || []), ...(second?.data?.diff || [])] };
+  const indexSpecs = [
+    ['ä¸è¯', '1.000001'],
+    ['æ·±è¯', '0.399001'],
+    ['åä¸æ¿', '0.399006'],
+    ['ç§å50', '1.000688']
+  ];
+
+  const indexPromise = Promise.allSettled(
+    indexSpecs.map(async ([name, id]) => {
+      const j = await fetchParsed(indexQuoteUrl(id), 2500);
+      return { name, id, pct: +j?.data?.f170, price: +j?.data?.f43 };
+    })
+  );
+
+  const lists = await mapLimit(specs, 6, async (spec, i) => {
+    const first = await fetchMarketRank(spec.fid, 1, 100, i);
+    return {
+      spec,
+      total: +first?.data?.total || 0,
+      rows: first?.data?.diff || []
+    };
   });
 
   const merged = new Map();
@@ -164,17 +195,27 @@ async function rankedCandidates() {
   for (let i = 0; i < lists.length; i++) {
     const z = lists[i];
     const spec = specs[i];
+
     if (!z || z.error) {
       failures.push({ key: spec.key, error: z?.error || 'unknown' });
       continue;
     }
+
     okLists++;
     universeTotal = universeTotal || z.total || 0;
+
     for (let r = 0; r < z.rows.length; r++) {
       const row = z.rows[r];
       const code = String(row?.f12 || '');
       if (!/^(0|3|6)\d{5}$/.test(code)) continue;
-      const old = merged.get(code) || { ...row, _rankPoints: 0, _rankHits: 0, _ranks: {} };
+
+      const old = merged.get(code) || {
+        ...row,
+        _rankPoints: 0,
+        _rankHits: 0,
+        _ranks: {}
+      };
+
       const decay = Math.max(0, 1 - r / Math.max(1, z.rows.length));
       old._rankPoints += spec.weight * decay;
       old._rankHits += 1;
@@ -183,32 +224,34 @@ async function rankedCandidates() {
     }
   }
 
-  if (okLists < 4) {
+  if (okLists < 3) {
+    if (rankedMemory && now - rankedMemory.t < 30 * 60 * 1000) {
+      return {
+        data: {
+          ...rankedMemory.value.data,
+          serverStale: true,
+          serverStaleAgeMin: Math.round((now - rankedMemory.t) / 60000)
+        }
+      };
+    }
     throw new Error(`rank sources insufficient: ${okLists}/${specs.length}`);
   }
 
-  const rows = [...merged.values()].map(row => ({
-    ...row,
-    rankScore: Math.min(100, row._rankPoints / 1.55 * 100),
-    rankHits: row._rankHits,
-    ranks: row._ranks
-  })).sort((a, b) => (b.rankScore || 0) - (a.rankScore || 0));
+  const rows = [...merged.values()]
+    .map(row => ({
+      ...row,
+      rankScore: Math.min(100, row._rankPoints / 1.55 * 100),
+      rankHits: row._rankHits,
+      ranks: row._ranks
+    }))
+    .sort((a, b) => (b.rankScore || 0) - (a.rankScore || 0));
 
-  const indexSpecs = [
-    ['上证', '1.000001'],
-    ['深证', '0.399001'],
-    ['创业板', '0.399006'],
-    ['科创50', '1.000688']
-  ];
+  const indexSettled = await indexPromise;
+  const indices = indexSettled
+    .filter(x => x.status === 'fulfilled' && Number.isFinite(x.value?.pct))
+    .map(x => x.value);
 
-  const indexRaw = await mapLimit(indexSpecs, 2, async ([name, id]) => {
-    const j = await fetchParsed(indexQuoteUrl(id), 6000);
-    return { name, id, pct: +j?.data?.f170, price: +j?.data?.f43 };
-  });
-
-  const indices = indexRaw.filter(x => x && !x.error && Number.isFinite(x.pct));
-
-  return {
+  const value = {
     data: {
       universeTotal,
       candidates: rows.slice(0, 420),
@@ -218,11 +261,14 @@ async function rankedCandidates() {
       failures,
       indices,
       generatedAt: new Date().toISOString(),
-      method: 'full-universe-ranked-preselection'
+      method: 'full-universe-ranked-preselection-fast-v2',
+      serverStale: false
     }
   };
-}
 
+  rankedMemory = { t: now, value };
+  return value;
+}
 export default async function handler(req, res) {
   const u = new URL(req.url, 'http://localhost');
   const action = u.searchParams.get('action') || '';
@@ -230,13 +276,12 @@ export default async function handler(req, res) {
 
   try {
     if (action === 'ranked_candidates') {
-      return send(res, 200, await rankedCandidates(), 90);
+      return send(res, 200, await rankedCandidates(), 300);
     }
 
     if (action === 'deep_batch') {
       const codes = parseCodes(u.searchParams.get('codes'), 30);
       if (!codes.length) return send(res, 400, { error: 'no valid codes' }, 0);
-
       const items = await mapLimit(codes, 5, async c => {
         const [kline, flow] = await Promise.all([
           fetchParsed(klineUrl(c), 9000),
@@ -244,59 +289,25 @@ export default async function handler(req, res) {
         ]);
         return { code: c, kline, flow };
       });
-
-      return send(
-        res,
-        200,
-        {
-          items: items.map((z, i) =>
-            z?.error ? { code: codes[i], error: z.error } : z
-          )
-        },
-        60
-      );
+      return send(res, 200, { items: items.map((z, i) => z?.error ? { code: codes[i], error: z.error } : z) }, 60);
     }
 
     if (action === 'news_batch') {
       const codes = parseCodes(u.searchParams.get('codes'), 8);
       if (!codes.length) return send(res, 400, { error: 'no valid codes' }, 0);
-
       const items = await mapLimit(codes, 4, async c => {
         const news = await fetchParsed(newsUrl(c), 9000).catch(() => null);
         return { code: c, news };
       });
-
-      return send(
-        res,
-        200,
-        {
-          items: items.map((z, i) =>
-            z?.error ? { code: codes[i], error: z.error } : z
-          )
-        },
-        120
-      );
+      return send(res, 200, { items: items.map((z, i) => z?.error ? { code: codes[i], error: z.error } : z) }, 120);
     }
 
-    if (!/^\d{6}$/.test(code)) {
-      return send(res, 400, { error: 'invalid stock code' }, 0);
-    }
+    if (!/^\d{6}$/.test(code)) return send(res, 400, { error: 'invalid stock code' }, 0);
 
-    if (action === 'kline') {
-      return send(res, 200, await fetchParsed(klineUrl(code), 9000), 300);
-    }
-
-    if (action === 'flow') {
-      return send(res, 200, await fetchParsed(flowUrl(code), 9000), 120);
-    }
-
-    if (action === 'quote') {
-      return send(res, 200, await fetchParsed(quoteUrl(code), 7000), 8);
-    }
-
-    if (action === 'news') {
-      return send(res, 200, await fetchParsed(newsUrl(code), 9000), 180);
-    }
+    if (action === 'kline') return send(res, 200, await fetchParsed(klineUrl(code), 9000), 300);
+    if (action === 'flow') return send(res, 200, await fetchParsed(flowUrl(code), 9000), 120);
+    if (action === 'quote') return send(res, 200, await fetchParsed(quoteUrl(code), 7000), 8);
+    if (action === 'news') return send(res, 200, await fetchParsed(newsUrl(code), 9000), 180);
 
     return send(res, 400, { error: 'unknown action' }, 0);
   } catch (e) {
