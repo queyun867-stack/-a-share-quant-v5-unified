@@ -1,4 +1,4 @@
-饿export const config = { maxDuration: 30 };
+export const config = { maxDuration: 30 };
 
 const EM_HOSTS = [
   'https://push2.eastmoney.com',
