@@ -59,7 +59,7 @@ function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,mi
     for(const row of p.diff){const x=normalize(row,s.key);if(!x.mainBoard)throw Error('segment-non-main-board-'+s.key+'-'+x.code);if(seen.has(x.code))throw Error('duplicate-code-'+x.code);seen.add(x.code);records.push(x);}};
    append(first);
    // Four concurrent pages; any failed page invalidates the entire observation.
-   for(let p=2;p<=pages;p+=4){const batch=await Promise.all(Array.from({length:Math.min(4,pages-p+1)},(_,i)=>fetchPage(s,p+i)));for(const item of batch)append(item);}
+for(let p=2;p<=pages;p+=2){const batch=await Promise.all(Array.from({length:Math.min(2,pages-p+1)},(_,i)=>fetchPage(s,p+i)));for(const item of batch)append(item);}
   }
   const expected=Object.values(totals).reduce((a,b)=>a+b,0);if(records.length!==expected)throw Error('universe-count-mismatch');
   const finished=now(),quality=metrics(records,finished,started,finished,minUniverse);
