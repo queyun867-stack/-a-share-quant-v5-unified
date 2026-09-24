@@ -73,6 +73,7 @@ function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,mi
   try{return res.status(200).json(await collect());}catch(e){return res.status(503).json({schema:'ashare-independent-main-board-v1',status:'SOURCE_FAILED',qualifiedForDiscovery:false,neverTradeSignal:true,asOf:{failedAt:new Date(now()).toISOString()},error:String(e?.message||'unknown-upstream-error').slice(0,180),records:[],noPartialUniverse:true});}
  };
 }
-module.exports=createHandler();
-module.exports.createHandler=createHandler;
-module.exports._internal={normalize,metrics,aggregate,isMainBoard,marketOpen};
+
+export default createHandler();
+export { createHandler };
+export const _internal = {normalize,metrics,aggregate,isMainBoard,marketOpen};
