@@ -1,0 +1,91 @@
+name: Source Probe (Manual)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check upstream connectivity
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import datetime, json, re, time, urllib.error, urllib.parse, urllib.request
+
+          BASE = 'https://push2.eastmoney.com/api/qt/clist/get'
+          HEADERS = {'User-Agent': 'Mozilla/5.0 AShareQuant/source-health-v1',
+                     'Referer': 'https://quote.eastmoney.com/', 'Accept': 'application/json,text/javascript,*/*;q=0.8'}
+          results = []
+
+          def fetch(url, headers):
+              started = time.monotonic()
+              try:
+                  with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=8) as r:
+                      body = r.read()
+                      return {'http': r.status, 'body': body, 'ms': round((time.monotonic()-started)*1000)}
+              except urllib.error.HTTPError as e:
+                  return {'http': e.code, 'error': 'upstream-http', 'ms': round((time.monotonic()-started)*1000)}
+              except Exception as e:
+                  return {'error': type(e).__name__ + ': ' + str(e)[:90], 'ms': round((time.monotonic()-started)*1000)}
+
+          for round_no in (1, 2):
+              for segment, fs, prefix in [('SZ_MAIN', 'm:0+t:6', '00'), ('SH_MAIN', 'm:1+t:2', '60')]:
+                  for page in (1, 2):
+                      params = {'pn': page, 'pz': 100, 'po': 1, 'np': 1, 'fltt': 2, 'invt': 2,
+                                'fid': 'f6', 'fs': fs, 'fields': 'f12,f14,f2,f6,f100,f124'}
+                      response = fetch(BASE + '?' + urllib.parse.urlencode(params), HEADERS)
+                      item = {'source': 'eastmoney', 'round': round_no, 'segment': segment, 'page': page,
+                              'http': response.get('http'), 'elapsedMs': response['ms']}
+                      try:
+                          payload = json.loads(response['body'])
+                          data = payload.get('data') or {}
+                          diff = data.get('diff')
+                          rows = list(diff.values()) if isinstance(diff, dict) else diff
+                          total = int(data['total'])
+                          if not isinstance(rows, list): raise ValueError('missing-diff')
+                          codes = [str(row.get('f12', '')) for row in rows]
+                          item.update(providerRc=payload.get('rc'), total=total, returned=len(rows),
+                                      expected=max(0, min(100, total-(page-1)*100)),
+                                      sampleCodes=codes[:5], nonMainBoardCount=sum(not c.startswith(prefix) for c in codes),
+                                      quoteTimestampPresent=sum(isinstance(row.get('f124'), (int, float)) and row['f124'] > 1000000000 for row in rows))
+                          item['ok'] = response.get('http') == 200 and payload.get('rc') == 0 and len(rows) == item['expected']
+                      except Exception as e:
+                          item.update(ok=False, error=response.get('error', type(e).__name__ + ': ' + str(e)[:90]))
+                      results.append(item)
+                      print(json.dumps(item, ensure_ascii=False), flush=True)
+              if round_no == 1: time.sleep(2)
+
+          for round_no in (1, 2):
+              response = fetch('https://qt.gtimg.cn/q=sh600707,sz002436',
+                               {'User-Agent': HEADERS['User-Agent'], 'Referer': 'https://gu.qq.com/'})
+              item = {'source': 'tencent', 'round': round_no, 'http': response.get('http'), 'elapsedMs': response['ms']}
+              if 'body' in response:
+                  raw = response['body'].decode('gbk', errors='replace')
+                  matches = re.findall(r'v_(?:sh|sz)\d{6}="([^"]*)"', raw)
+                  item.update(returned=len(matches), quoteTimes=[m.split('~')[30] if len(m.split('~')) > 30 else None for m in matches], ok=len(matches) == 2)
+              else: item.update(ok=False, error=response.get('error'))
+              results.append(item)
+              print(json.dumps(item, ensure_ascii=False), flush=True)
+
+          report = {'schema': 'ashare-source-probe-v1', 'capturedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                    'diagnosticOnly': True, 'neverTradeSignal': True, 'notFullMarketScan': True,
+                    'successfulChecks': sum(bool(r.get('ok')) for r in results), 'totalChecks': len(results), 'results': results}
+          with open('source-probe-report.json', 'w', encoding='utf-8') as f: json.dump(report, f, ensure_ascii=False, indent=2)
+          with open(__import__('os').environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write(f"## Source probe: {report['successfulChecks']}/{report['totalChecks']} checks passed\n\n")
+              f.write('| Source | Round | Segment | Page | HTTP | Returned | Total | Non-main-board | ms | OK |\n|---|---:|---|---:|---:|---:|---:|---:|---:|---|\n')
+              for r in results:
+                  f.write(f"| {r['source']} | {r['round']} | {r.get('segment','-')} | {r.get('page','-')} | {r.get('http','-')} | {r.get('returned','-')} | {r.get('total','-')} | {r.get('nonMainBoardCount','-')} | {r['elapsedMs']} | {r['ok']} |\n")
+          PY
+      - name: Upload diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: source-probe-report
+          path: source-probe-report.json
+          if-no-files-found: warn
