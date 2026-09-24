@@ -8,7 +8,7 @@ const DEFAULT_SEGMENTS = Object.freeze([
   {key:'SH_MAIN',fs:'m:1+t:2'}
 ]);
 const FIELDS='f12,f14,f2,f3,f6,f8,f20,f24,f62,f100,f124,f184';
-const PAGE_SIZE=200;
+const PAGE_SIZE=100;
 const MAX_PAGES=40;
 function n(v){if(v===null||v===undefined||v==='-'||v==='')return NaN;const x=Number(v);return Number.isFinite(x)?x:NaN;}
 function isMainBoard(code){return /^(00|60)\d{4}$/.test(code);}
