@@ -1,8 +1,7 @@
-
 'use strict';
+export const config = { maxDuration: 60 };
 // V10.3.7 independent SHADOW universe. Does not modify /api/market or create BUY.
-// Uses the provider's Shanghai/Shenzhen main-board segment filters; verification is scoped
-// to the provider's returned universe, NOT to an exchange-certified full-list registry.
+// Uses provider main-board segments, not an exchange-certified full-list registry.
 const DEFAULT_SEGMENTS = Object.freeze([
   {key:'SZ_MAIN',fs:'m:0+t:6'},
   {key:'SH_MAIN',fs:'m:1+t:2'}
@@ -49,17 +48,17 @@ function aggregate(rows){
  return{sectors,leaders,nearTenPctIsApproximate:true,noSealedOrderBookData:true,noConceptConstituentMapping:true};
 }
 function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,minUniverse=500,segments=DEFAULT_SEGMENTS,host='https://push2.eastmoney.com',timeoutMs=6500}={}){
- async function fetchPage(segment,page){const url=new URL('/api/qt/clist/get',host);url.search=new URLSearchParams({pn:String(page),pz:String(pageSize),po:'1',np:'1',ut:'bd1d9ddb04089700cf9c27f6f7426281',fltt:'2',invt:'2',fid:'f3',fs:segment.fs,fields:FIELDS}).toString();
+ async function fetchPage(segment,page){const url=new URL('/api/qt/clist/get',host);url.search=new URLSearchParams({pn:String(page),pz:String(pageSize),po:'1',np:'1',fltt:'2',invt:'2',fid:'f6',fs:segment.fs,fields:FIELDS}).toString();
   const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),timeoutMs);
-  try{const response=await fetchImpl(url.toString(),{signal:ctrl.signal,headers:{accept:'application/json'},cache:'no-store'});if(!response.ok)throw Error('upstream-http-'+response.status);const j=await response.json();const total=n(j?.data?.total),d=j?.data?.diff;const diff=Array.isArray(d)?d:(d&&typeof d==='object'?Object.values(d):null);
+  try{const response=await fetchImpl(url.toString(),{signal:ctrl.signal,headers:{accept:'application/json,text/javascript,*/*;q=0.8','user-agent':'Mozilla/5.0 AShareQuant/source-health-v1',referer:'https://quote.eastmoney.com/'},cache:'no-store'});if(!response.ok)throw Error('upstream-http-'+response.status);const j=await response.json();const total=n(j?.data?.total),d=j?.data?.diff;const diff=Array.isArray(d)?d:(d&&typeof d==='object'?Object.values(d):null);
    if(!Number.isInteger(total)||total<0||!Array.isArray(diff))throw Error('upstream-malformed-page');return{page,total,diff};
-  }finally{clearTimeout(timer);}}
+  }catch(e){throw Error('fetch-page-'+segment.key+'-'+page+'-'+(ctrl.signal.aborted?'timeout':String(e?.message||e)));}finally{clearTimeout(timer);}}
  async function collect(){const started=now(),pageMeta=[],records=[],seen=new Set(),totals={};
   for(const s of segments){const first=await fetchPage(s,1),pages=Math.ceil(first.total/pageSize);if(!first.total||pages>MAX_PAGES)throw Error('universe-total-invalid-'+s.key);totals[s.key]=first.total;
    const append=p=>{pageMeta.push({segment:s.key,page:p.page,total:p.total,count:p.diff.length,receivedAt:new Date(now()).toISOString()});if(p.total!==first.total)throw Error('universe-total-drift-'+s.key);const expected=Math.min(pageSize,first.total-(p.page-1)*pageSize);if(p.diff.length!==expected)throw Error('page-size-mismatch-'+s.key+'-'+p.page);
     for(const row of p.diff){const x=normalize(row,s.key);if(!x.mainBoard)throw Error('segment-non-main-board-'+s.key+'-'+x.code);if(seen.has(x.code))throw Error('duplicate-code-'+x.code);seen.add(x.code);records.push(x);}};
    append(first);
-   // 4 concurrent page requests keep the endpoint bounded without trusting partial results.
+   // Four concurrent pages; any failed page invalidates the entire observation.
    for(let p=2;p<=pages;p+=4){const batch=await Promise.all(Array.from({length:Math.min(4,pages-p+1)},(_,i)=>fetchPage(s,p+i)));for(const item of batch)append(item);}
   }
   const expected=Object.values(totals).reduce((a,b)=>a+b,0);if(records.length!==expected)throw Error('universe-count-mismatch');
@@ -73,7 +72,6 @@ function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,mi
   try{return res.status(200).json(await collect());}catch(e){return res.status(503).json({schema:'ashare-independent-main-board-v1',status:'SOURCE_FAILED',qualifiedForDiscovery:false,neverTradeSignal:true,asOf:{failedAt:new Date(now()).toISOString()},error:String(e?.message||'unknown-upstream-error').slice(0,180),records:[],noPartialUniverse:true});}
  };
 }
-
 export default createHandler();
-export { createHandler };
-export const _internal = {normalize,metrics,aggregate,isMainBoard,marketOpen};
+export {createHandler};
+export const _internal={normalize,metrics,aggregate,isMainBoard,marketOpen};
