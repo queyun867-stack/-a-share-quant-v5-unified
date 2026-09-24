@@ -9,6 +9,8 @@ const DEFAULT_SEGMENTS = Object.freeze([
 const FIELDS='f12,f14,f2,f3,f6,f8,f20,f24,f62,f100,f124,f184';
 const PAGE_SIZE=100;
 const MAX_PAGES=40;
+const RETRY_DELAYS_MS=[300,800];
+const MAX_SCAN_MS=47000;
 function n(v){if(v===null||v===undefined||v==='-'||v==='')return NaN;const x=Number(v);return Number.isFinite(x)?x:NaN;}
 function isMainBoard(code){return /^(00|60)\d{4}$/.test(code);}
 function shanghaiDate(ms){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(ms));}
@@ -47,21 +49,58 @@ function aggregate(rows){
   notLimitUpVerified:true,notExecutableVerified:true}));
  return{sectors,leaders,nearTenPctIsApproximate:true,noSealedOrderBookData:true,noConceptConstituentMapping:true};
 }
-function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,minUniverse=500,segments=DEFAULT_SEGMENTS,host='https://push2.eastmoney.com',timeoutMs=6500}={}){
- async function fetchPage(segment,page){const url=new URL('/api/qt/clist/get',host);url.search=new URLSearchParams({pn:String(page),pz:String(pageSize),po:'1',np:'1',fltt:'2',invt:'2',fid:'f6',fs:segment.fs,fields:FIELDS}).toString();
-  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),timeoutMs);
-  try{const response=await fetchImpl(url.toString(),{signal:ctrl.signal,headers:{accept:'application/json,text/javascript,*/*;q=0.8','user-agent':'Mozilla/5.0 AShareQuant/source-health-v1',referer:'https://quote.eastmoney.com/'},cache:'no-store'});if(!response.ok)throw Error('upstream-http-'+response.status);const j=await response.json();const total=n(j?.data?.total),d=j?.data?.diff;const diff=Array.isArray(d)?d:(d&&typeof d==='object'?Object.values(d):null);
-   if(!Number.isInteger(total)||total<0||!Array.isArray(diff))throw Error('upstream-malformed-page');return{page,total,diff};
-  }catch(e){throw Error('fetch-page-'+segment.key+'-'+page+'-'+(ctrl.signal.aborted?'timeout':String(e?.message||e)));}finally{clearTimeout(timer);}}
- async function collect(){const started=now(),pageMeta=[],records=[],seen=new Set(),totals={};
-  for(const s of segments){const first=await fetchPage(s,1),pages=Math.ceil(first.total/pageSize);if(!first.total||pages>MAX_PAGES)throw Error('universe-total-invalid-'+s.key);totals[s.key]=first.total;
-   const append=p=>{pageMeta.push({segment:s.key,page:p.page,total:p.total,count:p.diff.length,receivedAt:new Date(now()).toISOString()});if(p.total!==first.total)throw Error('universe-total-drift-'+s.key);const expected=Math.min(pageSize,first.total-(p.page-1)*pageSize);if(p.diff.length!==expected)throw Error('page-size-mismatch-'+s.key+'-'+p.page);
+function createHandler({fetchImpl=fetch,now=()=>Date.now(),pageSize=PAGE_SIZE,minUniverse=500,segments=DEFAULT_SEGMENTS,host='https://push2.eastmoney.com',timeoutMs=6500,maxScanMs=MAX_SCAN_MS,sleepImpl=ms=>new Promise(r=>setTimeout(r,ms))}={}){
+ async function fetchPage(segment,page,deadlineAt){
+  const remaining=deadlineAt-now();
+  if(remaining<1500)throw Error('scan-time-budget-exceeded');
+  const url=new URL('/api/qt/clist/get',host);
+  url.search=new URLSearchParams({pn:String(page),pz:String(pageSize),po:'1',np:'1',fltt:'2',invt:'2',fid:'f6',fs:segment.fs,fields:FIELDS}).toString();
+  const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),Math.min(timeoutMs,remaining-500));
+  try{
+   const response=await fetchImpl(url.toString(),{signal:ctrl.signal,headers:{accept:'application/json,text/javascript,*/*;q=0.8','user-agent':'Mozilla/5.0 AShareQuant/source-health-v1',referer:'https://quote.eastmoney.com/'},cache:'no-store'});
+   if(!response.ok)throw Error('upstream-http-'+response.status);
+   const j=await response.json(),total=n(j?.data?.total),d=j?.data?.diff;
+   const diff=Array.isArray(d)?d:(d&&typeof d==='object'?Object.values(d):null);
+   if(!Number.isInteger(total)||total<0||!Array.isArray(diff))throw Error('upstream-malformed-page');
+   return{page,total,diff};
+  }catch(e){throw Error(ctrl.signal.aborted?'timeout':String(e?.message||e));}
+  finally{clearTimeout(timer);}
+ }
+ async function fetchPageWithRetry(segment,page,deadlineAt){
+  const started=now();let last='unknown-error',attempts=0;
+  for(let attempt=1;attempt<=3;attempt++){
+   if(deadlineAt-now()<1500)throw Error('fetch-page-'+segment.key+'-'+page+'-scan-time-budget-exceeded-attempts-'+attempts);
+   attempts=attempt;
+   try{
+    const result=await fetchPage(segment,page,deadlineAt);
+    if(attempt>1)console.info(JSON.stringify({event:'discovery-page-recovered',segment:segment.key,page,attempts,elapsedMs:now()-started}));
+    return{...result,attempts,elapsedMs:now()-started};
+   }catch(e){
+    last=String(e?.message||e);
+    console.warn(JSON.stringify({event:'discovery-page-failed',segment:segment.key,page,attempt,elapsedMs:now()-started,reason:last}));
+    if(attempt===3||!(last==='upstream-http-502'||last==='timeout'))break;
+    if(deadlineAt-now()<RETRY_DELAYS_MS[attempt-1]+1500)break;
+    await sleepImpl(RETRY_DELAYS_MS[attempt-1]);
+   }
+  }
+  throw Error('fetch-page-'+segment.key+'-'+page+'-attempts-'+attempts+'-'+last+'-elapsedMs-'+(now()-started));
+ }
+ async function collect(){const started=now(),deadlineAt=started+maxScanMs,pageMeta=[],records=[],seen=new Set(),totals={};
+  for(const s of segments){
+   const first=await fetchPageWithRetry(s,1,deadlineAt),pages=Math.ceil(first.total/pageSize);
+   if(!first.total||pages>MAX_PAGES)throw Error('universe-total-invalid-'+s.key);
+   totals[s.key]=first.total;
+   const append=p=>{pageMeta.push({segment:s.key,page:p.page,total:p.total,count:p.diff.length,attempts:p.attempts,elapsedMs:p.elapsedMs,receivedAt:new Date(now()).toISOString()});
+    if(p.total!==first.total)throw Error('universe-total-drift-'+s.key);
+    const expected=Math.min(pageSize,first.total-(p.page-1)*pageSize);
+    if(p.diff.length!==expected)throw Error('page-size-mismatch-'+s.key+'-'+p.page);
     for(const row of p.diff){const x=normalize(row,s.key);if(!x.mainBoard)throw Error('segment-non-main-board-'+s.key+'-'+x.code);if(seen.has(x.code))throw Error('duplicate-code-'+x.code);seen.add(x.code);records.push(x);}};
    append(first);
-   // Four concurrent pages; any failed page invalidates the entire observation.
-for(let p=2;p<=pages;p+=2){const batch=await Promise.all(Array.from({length:Math.min(2,pages-p+1)},(_,i)=>fetchPage(s,p+i)));for(const item of batch)append(item);}
+   // Two concurrent pages. Retry only HTTP 502 and timeouts, then fail closed.
+   for(let p=2;p<=pages;p+=2){const batch=await Promise.all(Array.from({length:Math.min(2,pages-p+1)},(_,i)=>fetchPageWithRetry(s,p+i,deadlineAt)));for(const item of batch)append(item);}
   }
-  const expected=Object.values(totals).reduce((a,b)=>a+b,0);if(records.length!==expected)throw Error('universe-count-mismatch');
+  const expected=Object.values(totals).reduce((a,b)=>a+b,0);
+  if(records.length!==expected)throw Error('universe-count-mismatch');
   const finished=now(),quality=metrics(records,finished,started,finished,minUniverse);
   return{schema:'ashare-independent-main-board-v1',status:quality.qualified?'QUALIFIED_OBSERVATION':'UNQUALIFIED_OBSERVATION',qualifiedForDiscovery:quality.qualified,neverTradeSignal:true,
     source:{provider:'Eastmoney-clist',scope:'provider-main-board-segments-only',segments,counts:totals,notExchangeCertified:true},
